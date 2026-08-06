@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+from app.routes.health import router as health_router
+from app.routes.upload import router as upload_router
+
 
 app = FastAPI(
     title="MCL OCR Backend",
@@ -6,9 +9,5 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
-@app.get("/")
-def root():
-    return {
-        "message": "MCL OCR Backend is running 🚀"
-    }
+app.include_router(health_router)
+app.include_router(upload_router)
