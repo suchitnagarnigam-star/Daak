@@ -5,15 +5,6 @@ import os
 load_dotenv()
 
 # ==========================
-# Google Document AI
-# ==========================
-
-DOCUMENT_AI_PROJECT_ID = os.getenv("DOCUMENT_AI_PROJECT_ID")
-DOCUMENT_AI_LOCATION = os.getenv("DOCUMENT_AI_LOCATION")
-DOCUMENT_AI_PROCESSOR_ID = os.getenv("DOCUMENT_AI_PROCESSOR_ID")
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-
-# ==========================
 # Anthropic Claude
 # ==========================
 
