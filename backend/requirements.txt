@@ -4,13 +4,12 @@ uvicorn[standard]
 opencv-python
 numpy
 
-google-cloud-documentai
+python-dotenv
+python-multipart
+
+paddleocr
+paddlepaddle
 
 supabase
 
-google-api-python-client
-google-auth
-google-auth-oauthlib
-
-python-multipart
-python-dotenv
+anthropic
