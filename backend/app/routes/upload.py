@@ -1,6 +1,6 @@
 #  this entire file is for testing the upload functionality. It will be removed later when the upload functionality is implemented in the frontend.
 from fastapi import APIRouter, UploadFile, File
-from backend.app.services.opencv_services import process_image
+from app.services.opencv_services import process_image
 from app.utils.file_utils import save_uploaded_file
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
