@@ -2,9 +2,15 @@
 backend/.venv/
 __pycache__/
 *.pyc
+*.pyo
 
 # Environment
 .env
+
+# Credentials — add this entire block
+credentials/
+*.json 
+
 
 # Node
 frontend/node_modules/
@@ -13,3 +19,8 @@ frontend/dist/
 # IDE
 .vscode/
 .idea/
+
+
+# images
+backend/processed
+backend/uploads
