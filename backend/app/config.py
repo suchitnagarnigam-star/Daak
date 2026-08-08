@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 import os
 
+import anthropic
+
 # Load environment variables
 load_dotenv()
 
@@ -9,6 +11,8 @@ load_dotenv()
 # ==========================
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+anthropic_client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
 
 # ==========================
 # Supabase
