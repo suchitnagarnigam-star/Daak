@@ -13,3 +13,5 @@ paddlepaddle
 supabase
 
 anthropic
+google-generativeai
+pytest

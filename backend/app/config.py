@@ -1,18 +1,33 @@
 from dotenv import load_dotenv
 import os
 
-import anthropic
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
 # Load environment variables
 load_dotenv()
+
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+gemini_client = None
+if genai and GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_client = genai.GenerativeModel("gemini-1.5-flash")
 
 # ==========================
 # Anthropic Claude
 # ==========================
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-
-anthropic_client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
+anthropic_client = None
+if anthropic and ANTHROPIC_API_KEY:
+    anthropic_client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
 
 # ==========================
 # Supabase
