@@ -34,7 +34,7 @@ def process_image(file_path: str) -> str:
     # ------------------------------------------------
     # 3. Brightness Adjustment
     # ------------------------------------------------
-    brightness = 00  # Adjust this value as needed
+    brightness = 0  # Adjust this value as needed
     if brightness != 0:
         rgb =  cv2.convertScaleAbs(
             rgb,
