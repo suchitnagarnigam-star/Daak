@@ -7,9 +7,21 @@ numpy
 python-dotenv
 python-multipart
 
+<<<<<<< HEAD
 paddleocr
+=======
+paddlex[ocr]
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
 paddlepaddle
 
 supabase
 
 anthropic
+<<<<<<< HEAD
+
+paddlepaddle==3.3.0
+paddleocr==3.7.0
+=======
+google-genai
+pytest
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
