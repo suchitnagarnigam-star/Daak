@@ -5,6 +5,9 @@ services:
       context: .
     container_name: mcl-ocr-backend
 
+    environment:
+      PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT: "0"
+
     ports:
       - "8000:8000"
 
