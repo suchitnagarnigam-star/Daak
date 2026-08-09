@@ -44,6 +44,11 @@ def process_ocr(file_path: str)-> dict:
     # 3. Process prediction results
     # -----------------------------------
     ocr_results = []
+<<<<<<< HEAD
+=======
+    extracted_texts = []
+    
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
     for result in results:
 
         # Store PaddleOCR's structured result.
@@ -53,6 +58,17 @@ def process_ocr(file_path: str)-> dict:
         # exactly what PaddleOCR 3.7 returns.
 
         ocr_results.append(result)
+<<<<<<< HEAD
+=======
+        
+        # Extract text string from result
+        text = str(result)
+        if text:
+            extracted_texts.append(text)
+
+    # Join all extracted texts into a single string
+    combined_text = "\n".join(extracted_texts)
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
 
     #-----------------------------------
     # 4. Return results
@@ -60,4 +76,8 @@ def process_ocr(file_path: str)-> dict:
     return {
         "file": str(source),
         "results": ocr_results,
+<<<<<<< HEAD
+=======
+        "text": combined_text,
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
     }

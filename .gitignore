@@ -2,9 +2,22 @@
 backend/.venv/
 __pycache__/
 *.pyc
+<<<<<<< HEAD
 
 # Environment
 ./.env
+=======
+*.pyo
+
+# Environment
+.env
+backend/.env
+
+# Credentials — add this entire block
+credentials/
+*.json 
+
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
 
 # Node
 frontend/node_modules/
@@ -12,4 +25,15 @@ frontend/dist/
 
 # IDE
 .vscode/
+<<<<<<< HEAD
 .idea/
+=======
+.idea/
+
+
+# images
+backend/processed
+backend/uploads
+
+docs/mcl_ui_prompt.md
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
