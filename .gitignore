@@ -6,6 +6,7 @@ __pycache__/
 
 # Environment
 .env
+backend/.env
 
 # Credentials — add this entire block
 credentials/
