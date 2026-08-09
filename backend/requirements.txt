@@ -7,11 +7,11 @@ numpy
 python-dotenv
 python-multipart
 
-paddleocr
+paddlex[ocr]
 paddlepaddle
 
 supabase
 
 anthropic
-google-generativeai
+google-genai
 pytest

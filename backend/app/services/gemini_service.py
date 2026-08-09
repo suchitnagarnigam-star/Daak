@@ -94,7 +94,7 @@ DEPARTMENTS = [
 ]
 
 
-def process_document(ocr_output: str) -> dict:
+def process_document(ocr_results: str) -> dict:
     if gemini_client is None:
         return {
             "error": "Gemini client is not configured. Install the Gemini SDK and set GEMINI_API_KEY."
@@ -124,7 +124,7 @@ def process_document(ocr_output: str) -> dict:
         - Return only a valid JSON object, no explanation, no extra text
 
         DOCUMENT TEXT:
-        {ocr_output}
+        {ocr_results}
 
         Return this exact JSON structure:
         {{
@@ -138,9 +138,14 @@ def process_document(ocr_output: str) -> dict:
             "reference_number": null
         }}"""
 
-    response = gemini_client.generate_content(prompt)
+    response = gemini_client.models.generate_content(
+    model="gemini-3.1-flash-lite",
+    contents=prompt
+    )
 
     try:
-        return json.loads(response.text)
+        llm_output = json.loads(response.text)
     except json.JSONDecodeError:
-        return {"error": "Unable to parse Gemini response as JSON."}
+        llm_output = {"error": "Unable to parse Gemini response as JSON."}
+
+    return llm_output

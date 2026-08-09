@@ -26,8 +26,8 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender1 \
-    libgomp1 \        # PaddleOCR needs this
-    wget \            # PaddleOCR downloads models on first run
+    libgomp1 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (Docker layer caching)

@@ -137,7 +137,11 @@ def process_document(ocr_output: str) -> dict:
             "receiver": "",
             "reference_number": null
         }}"""
- 
+    
+    
+    if anthropic_client is None:
+        return {"error": "Anthropic client is not configured."}
+    
     # Send the prompt to the LLM for processing
     response = anthropic_client.messages.create(
         model="claude-sonnet-4-6",
