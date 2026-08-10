@@ -6,6 +6,8 @@ import logging
 from datetime import datetime, timezone
 # Import webhook URL and secret credentials from configuration
 from app.config import SHEETS_WEBHOOK_URL, SHEETS_SECRET
+from datetime import timezone, timedelta
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # Initialize logger for this module to track events and errors
 logger = logging.getLogger(__name__)
@@ -40,7 +42,7 @@ async def push_to_sheets(llm_result: dict, filename: str) -> bool:
         "data": {
             **llm_result,
             "filename": filename,
-            "processed_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            "processed_at": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S IST")
         }
     }
 
