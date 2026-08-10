@@ -16,3 +16,6 @@ supabase
 anthropic
 google-genai
 pytest
+
+
+httpx

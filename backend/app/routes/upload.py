@@ -4,6 +4,7 @@ from app.services.opencv_services import process_image
 from app.services.paddle_ocr_service import paddle_process_ocr
 from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
+from app.services.sheets_service import push_to_sheets
 import logging
 
 
@@ -27,13 +28,15 @@ async def upload_image(file: UploadFile = File(...)):
     llm_result = process_document(ocr_result["text"])
     logger.info(f"LLM result: {llm_result}")
 
+    await push_to_sheets(llm_result, file.filename) 
+
     output_path = save_result_json(file.filename, {
         "original_filename": file.filename,
         "original_path": saved_path,
         "processed_path": processed_path,
         "ocr_text": ocr_result["text"],
         "llm_result": llm_result,
-        "created_at": datetime.utcnow().isoformat() + "Z"
+        "created_at": datetime.now(timezone.utc).isoformat()
     })
 
     return {
