@@ -17,12 +17,13 @@ router = APIRouter(prefix="/upload", tags=["Upload"])
 async def upload_image(file: UploadFile = File(...)):
     saved_path = save_uploaded_file(file)
     processed_path = process_image(saved_path)
+    
     try:
-            ocr_result = mistral_process_ocr(processed_path)
-    except Exception:
-            ocr_result = paddle_process_ocr(processed_path)
-            
-    logger.info(f"OCR result: {ocr_result}")
+        ocr_result = mistral_process_ocr(processed_path)
+    except Exception as e:
+        logger.error(f"Mistral OCR failed: {e}")
+        ocr_result = paddle_process_ocr(processed_path)
+        
     llm_result = process_document(ocr_result["text"])
     logger.info(f"LLM result: {llm_result}")
 
