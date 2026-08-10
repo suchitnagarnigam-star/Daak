@@ -7,14 +7,32 @@ numpy
 python-dotenv
 python-multipart
 
+<<<<<<< HEAD
 
 mistralai
+=======
+<<<<<<< HEAD
+paddleocr
+=======
+paddlex[ocr]
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
+paddlepaddle
+>>>>>>> 65f4fac43680272b690decec69c8d11c60706fbf
 
 supabase
 
 anthropic
+<<<<<<< HEAD
+
+paddlepaddle==3.3.0
+paddleocr==3.7.0
+=======
 google-genai
 pytest
+<<<<<<< HEAD
 
 
 httpx
+=======
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
+>>>>>>> 65f4fac43680272b690decec69c8d11c60706fbf

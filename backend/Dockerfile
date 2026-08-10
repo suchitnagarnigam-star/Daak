@@ -16,7 +16,14 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender1 \
+<<<<<<< HEAD
+=======
     libgomp1 \
+<<<<<<< HEAD
+=======
+    wget \
+>>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
+>>>>>>> 65f4fac43680272b690decec69c8d11c60706fbf
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (Docker layer caching)
