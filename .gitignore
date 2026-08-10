@@ -10,7 +10,8 @@ backend/.env
 
 # Credentials
 credentials/
-*.json
+service-account.json
+google-credentials.json
 
 # Node
 frontend/node_modules/
