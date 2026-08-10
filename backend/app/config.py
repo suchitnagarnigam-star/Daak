@@ -26,7 +26,7 @@ if genai and GEMINI_API_KEY:
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 anthropic_client = None
 if anthropic and ANTHROPIC_API_KEY:
-    anthropic_client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
+    anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 # ==========================
 # Supabase

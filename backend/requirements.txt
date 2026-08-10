@@ -9,6 +9,7 @@ python-multipart
 
 paddlex[ocr]
 paddlepaddle
+mistralai
 
 supabase
 
