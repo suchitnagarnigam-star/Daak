@@ -5,14 +5,14 @@ import logging
 # Import datetime utilities for timestamp generation with timezone support
 from datetime import datetime, timezone
 # Import webhook URL and secret credentials from configuration
-from config import SHEETS_WEBHOOK_URL, SHEETS_SECRET
+from app.config import SHEETS_WEBHOOK_URL, SHEETS_SECRET
 
 # Initialize logger for this module to track events and errors
 logger = logging.getLogger(__name__)
 
 # Global variables to store the Google Sheets webhook URL and secret for authentication
-SHEETS_WEBHOOK_URL = SHEETS_WEBHOOK_URL 
-SHEETS_SECRET = SHEETS_SECRET
+SHEETS_WEBHOOK_URL = None 
+SHEETS_SECRET = None
 
 
 # Function to initialize/update the global Sheets webhook URL and secret credentials
@@ -46,7 +46,7 @@ async def push_to_sheets(llm_result: dict, filename: str) -> bool:
 
     try:
         # Create an async HTTP client with 10-second timeout and send POST request to webhook
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             resp = await client.post(SHEETS_WEBHOOK_URL, json=payload)
             # Check if response status is 200 (success)
             if resp.status_code == 200:

@@ -1,14 +1,13 @@
 fastapi
 uvicorn[standard]
 
-opencv-python
+opencv-python-headless
 numpy
 
 python-dotenv
 python-multipart
 
-paddlex[ocr]
-paddlepaddle
+
 mistralai
 
 supabase

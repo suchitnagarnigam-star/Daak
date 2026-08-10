@@ -1,11 +1,11 @@
 from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.services.opencv_services import process_image
-from app.services.paddle_ocr_service import paddle_process_ocr
 from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
 from app.services.sheets_service import push_to_sheets
 import logging
+from datetime import datetime, timezone
 
 
 logger = logging.getLogger(__name__)
@@ -18,13 +18,7 @@ router = APIRouter(prefix="/upload", tags=["Upload"])
 async def upload_image(file: UploadFile = File(...)):
     saved_path = save_uploaded_file(file)
     processed_path = process_image(saved_path)
-    
-    try:
-        ocr_result = mistral_process_ocr(processed_path)
-    except Exception as e:
-        logger.error(f"Mistral OCR failed: {e}")
-        ocr_result = paddle_process_ocr(processed_path)
-        
+    ocr_result = mistral_process_ocr(processed_path)
     llm_result = process_document(ocr_result["text"])
     logger.info(f"LLM result: {llm_result}")
 

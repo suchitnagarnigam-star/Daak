@@ -10,31 +10,20 @@ ENV PYTHONUNBUFFERED=1
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies required by OpenCV
-# RUN apt-get update && apt-get install -y \
-#     gcc \
-#     libglib2.0-0 \
-#     libsm6 \
-#     libxext6 \
-#     libxrender-dev \
-#     && rm -rf /var/lib/apt/lists/*
-
 RUN apt-get update && apt-get install -y \
-    gcc \
     libglib2.0-0 \
     libgl1 \
     libsm6 \
     libxext6 \
     libxrender1 \
     libgomp1 \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (Docker layer caching)
 COPY requirements.txt .
 
 # Upgrade pip
-RUN pip install --upgrade pip
+# RUN pip install --upgrade pip
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

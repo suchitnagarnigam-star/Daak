@@ -48,7 +48,3 @@ GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 # ==========================
 SHEETS_WEBHOOK_URL = os.getenv("SHEETS_WEBHOOK_URL")
 SHEETS_SECRET      = os.getenv("SHEETS_SECRET")
-
-from app.services.sheets_service import init_sheets
-if SHEETS_WEBHOOK_URL and SHEETS_SECRET:
-    init_sheets(SHEETS_WEBHOOK_URL, SHEETS_SECRET)

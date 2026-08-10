@@ -25,5 +25,7 @@ frontend/dist/
 # images
 backend/processed
 backend/uploads
+backend/output
+
 
 docs/mcl_ui_prompt.md
