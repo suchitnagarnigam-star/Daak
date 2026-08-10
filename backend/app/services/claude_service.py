@@ -46,7 +46,10 @@ def process_document(ocr_output: str) -> dict:
         FIELDS TO EXTRACT:
         - date: the date the document was published or written
         - subject: the topic or reason for this letter
-        - summary: a concise summary of the document body (3-5 lines) that captures the core issue and helps identify which department it belongs to
+        - summary: - summary: a concise 3-5 line prose summary of the document body only. 
+                    Do not repeat the date, sender name, receiver, or subject — those are captured separately. 
+                    Focus on the core issue, context, and what action is being requested.
+                    Write as flowing prose, not numbered points or bullet points.
         - department: the MCL department this document belongs to, chosen strictly from the DEPARTMENTS LIST above
         - sender_name: full name of the sender
         - sender_contact: phone or email of the sender if mentioned, otherwise null

@@ -36,7 +36,7 @@ def mistral_process_ocr(file_path: Path)-> dict:
         with file_path.open("rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    base64_file = encode_file(file_path)
+    base64_file = encode_file(source)
     
 
     ocr_response = client.ocr.process(
