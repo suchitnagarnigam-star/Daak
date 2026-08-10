@@ -12,7 +12,7 @@ ocr_pipeline = create_pipeline(
 # -----------------------------------
 # OCR Processing
 # -----------------------------------
-def process_ocr(file_path: str)-> dict:
+def paddle_process_ocr(file_path: str)-> dict:
     """
     Run paddleocr on processed image.
     Args: file_path (str): Path to the image file.

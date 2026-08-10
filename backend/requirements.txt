@@ -13,6 +13,7 @@ paddleocr
 paddlex[ocr]
 >>>>>>> 385251627864c45b8c1c19aa6a2b5568a9d32276
 paddlepaddle
+mistralai
 
 supabase
 

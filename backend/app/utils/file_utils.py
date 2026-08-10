@@ -1,10 +1,14 @@
 from pathlib import Path
 import shutil
+import json
+from datetime import datetime
 from fastapi import UploadFile
 
 UPLOAD_DIR = Path("uploads")
-# this will create the uploads directory if it doesn't exist
-UPLOAD_DIR.mkdir(exist_ok=True) 
+OUTPUT_DIR = Path("output")
+# this will create the uploads and output directories if they don't exist
+UPLOAD_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 def save_uploaded_file(file: UploadFile) -> str:
     """
@@ -18,3 +22,18 @@ def save_uploaded_file(file: UploadFile) -> str:
         # this will save the file in chunks to avoid memory issues with large files
         shutil.copyfileobj(file.file, buffer)
     return str(file_path)
+
+
+def save_result_json(image_filename: str, data: dict) -> str:
+    """
+    Save processing result metadata to the output folder and link it to the source image.
+    """
+    sanitized_name = Path(image_filename).stem
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    output_filename = f"{sanitized_name}_{timestamp}.json"
+    output_path = OUTPUT_DIR / output_filename
+
+    with open(output_path, "w", encoding="utf-8") as buffer:
+        json.dump(data, buffer, ensure_ascii=False, indent=2)
+
+    return str(output_path)
