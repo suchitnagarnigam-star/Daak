@@ -404,6 +404,7 @@
 /* =========================
    CAPTURE CONTROL
 ========================= */
+<<<<<<< HEAD
 
 .camera-controls {
   position: absolute;
@@ -415,6 +416,17 @@
   display: flex;
   justify-content: center;
 
+=======
+.camera-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
   z-index: 10;
 }
 
@@ -467,6 +479,28 @@
 }
 
 
+<<<<<<< HEAD
+=======
+.upload-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.upload-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
 /* =========================
    CAMERA ERROR
 ========================= */

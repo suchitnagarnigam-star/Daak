@@ -1,10 +1,23 @@
+
 import { useEffect, useRef, useState } from "react";
 import "./CameraScreen.css";
 
+<<<<<<< HEAD
 export default function CameraScreen() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+=======
+interface CameraScreenProps {
+  onCapture: (imageDataUrl: string, blob: Blob) => void
+}
+
+export default function CameraScreen({ onCapture }: CameraScreenProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
 
   const [cameraError, setCameraError] = useState<string>("");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -159,6 +172,18 @@ export default function CameraScreen() {
     stopCamera();
   };
 
+<<<<<<< HEAD
+=======
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    const blob = await fetch(url).then(r => r.blob())
+    stopCamera()
+    onCapture(url, blob)
+  }
+
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
   // =========================
   // RETAKE IMAGE
   // =========================
@@ -174,6 +199,7 @@ export default function CameraScreen() {
   // =========================
 
   const acceptImage = async (): Promise<void> => {
+<<<<<<< HEAD
     if (!capturedImage) {
       return;
     }
@@ -209,6 +235,11 @@ export default function CameraScreen() {
     console.log(
       "Captured document ready for backend processing."
     );
+=======
+    if (!capturedImage) return
+    const blob = await fetch(capturedImage).then(r => r.blob())
+    onCapture(capturedImage, blob)
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
   };
 
   return (
@@ -349,11 +380,26 @@ export default function CameraScreen() {
             <div className="camera-controls">
 
               <button
+<<<<<<< HEAD
+=======
+                className="upload-button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Upload from gallery"
+                type="button"
+              >
+                <span className="material-symbols-outlined">
+                  upload_file
+                </span>
+              </button>
+
+              <button
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
                 className="capture-button"
                 onClick={captureImage}
                 aria-label="Capture document"
                 type="button"
               >
+<<<<<<< HEAD
 
                 <div className="capture-inner">
 
@@ -365,6 +411,23 @@ export default function CameraScreen() {
 
               </button>
 
+=======
+                <div className="capture-inner">
+                  <span className="material-symbols-outlined">
+                    photo_camera
+                  </span>
+                </div>
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+              />
+
+>>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
             </div>
 
           </>
