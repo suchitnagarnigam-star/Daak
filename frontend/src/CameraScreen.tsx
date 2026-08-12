@@ -1,110 +1,43 @@
-import {
-  forwardRef,
-  useImperativeHandle,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import { useEffect, useRef, useState } from "react";
 import "./CameraScreen.css";
-import type { ChangeEvent } from "react";
 
-import mclLogo from "./assets/mcl-logo.png";
-
-<<<<<<< HEAD
-export default function CameraScreen() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-=======
 interface CameraScreenProps {
-  onAccept?: (image: Blob) => void | Promise<void>;
+  onCapture: (imageDataUrl: string, blob: Blob) => void
 }
 
-interface VideoCapabilitiesWithTorch
-  extends MediaTrackCapabilities {
-  torch?: boolean;
-}
-
-interface VideoConstraintsWithTorch
-  extends MediaTrackConstraintSet {
-  torch?: boolean;
-}
-
-export interface CameraScreenHandle {
-  capture: () => void;
-}
-const CameraScreen = forwardRef<
-  CameraScreenHandle,
-  CameraScreenProps
->(function CameraScreen(
-  {
-    onAccept,
-  },
-  ref
-) {
+export default function CameraScreen({ onCapture }: CameraScreenProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-<<<<<<< Updated upstream
   const fileInputRef = useRef<HTMLInputElement | null>(null)
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-=======
-  const trackRef = useRef<MediaStreamTrack | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
->>>>>>> Stashed changes
 
-  const [cameraError, setCameraError] = useState("");
-  const [capturedImage, setCapturedImage] =
-    useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string>("");
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-  const [capturedBlob, setCapturedBlob] =
-    useState<Blob | null>(null);
+  useEffect(() => {
+    startCamera();
 
-  const [torchAvailable, setTorchAvailable] =
-    useState(false);
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
-  const [torchEnabled, setTorchEnabled] =
-    useState(false);
+  // =========================
+  // START CAMERA
+  // =========================
 
-  const [isCapturing, setIsCapturing] =
-    useState(false);
-
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
-
-  /*
-   * Start the device camera.
-   */
-  const startCamera = useCallback(async () => {
+  const startCamera = async (): Promise<void> => {
     try {
       setCameraError("");
-      setTorchAvailable(false);
-      setTorchEnabled(false);
 
-      if (
-        !navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia
-      ) {
-        throw new Error(
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError(
           "Camera access is not supported by this browser."
         );
+        return;
       }
 
-      /*
-       * Stop an existing stream before opening another one.
-       */
-      if (streamRef.current) {
-        streamRef.current
-          .getTracks()
-          .forEach((track) => track.stop());
-
-        streamRef.current = null;
-        trackRef.current = null;
-      }
-
-      const stream =
+      const stream: MediaStream =
         await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: {
@@ -122,234 +55,67 @@ const CameraScreen = forwardRef<
 
       streamRef.current = stream;
 
-      const track = stream.getVideoTracks()[0];
-
-      trackRef.current = track;
-
-      /*
-       * Check whether the physical camera supports
-       * torch/flashlight control.
-       */
-      const capabilities =
-        track.getCapabilities() as VideoCapabilitiesWithTorch;
-
-      if (capabilities.torch === true) {
-        setTorchAvailable(true);
-      }
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
 
-        await videoRef.current.play();
+        await videoRef.current.play().catch(() => {
+          // Browser may require user interaction before playback.
+        });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Camera access error:", error);
 
-      setCameraError(
-        error instanceof Error
-          ? error.message
-          : "Unable to access the camera. Please allow camera permission."
-      );
+      if (error instanceof DOMException) {
+        if (error.name === "NotAllowedError") {
+          setCameraError(
+            "Camera permission was denied. Please allow camera access."
+          );
+        } else if (error.name === "NotFoundError") {
+          setCameraError(
+            "No camera was found on this device."
+          );
+        } else if (error.name === "NotReadableError") {
+          setCameraError(
+            "The camera is already being used by another application."
+          );
+        } else {
+          setCameraError(
+            "Camera access is unavailable. Please check your camera permissions."
+          );
+        }
+      } else {
+        setCameraError(
+          "Camera access is unavailable. Please allow camera permission."
+        );
+      }
     }
-  }, []);
+  };
 
-  /*
-   * Stop the current camera stream.
-   */
-  const stopCamera = useCallback(() => {
+  // =========================
+  // STOP CAMERA
+  // =========================
+
+  const stopCamera = (): void => {
     if (streamRef.current) {
       streamRef.current
         .getTracks()
-        .forEach((track) => track.stop());
+        .forEach((track: MediaStreamTrack) => {
+          track.stop();
+        });
 
       streamRef.current = null;
     }
 
-    trackRef.current = null;
-    setTorchEnabled(false);
-  }, []);
-
-  /*
-   * Start camera on mount.
-   */
-  useEffect(() => {
-    void startCamera();
-
-    return () => {
-      stopCamera();
-    };
-  }, [startCamera, stopCamera]);
-
-  /*
-   * Toggle the real device flashlight.
-   *
-   * This only works on devices/browsers which expose
-   * the torch capability.
-   */
-  const toggleTorch = async () => {
-    const track = trackRef.current;
-
-    if (!track || !torchAvailable) {
-      return;
-    }
-
-    try {
-      const nextTorchState = !torchEnabled;
-
-      await track.applyConstraints({
-        advanced: [
-          {
-            torch: nextTorchState,
-          } as VideoConstraintsWithTorch,
-        ],
-      });
-
-      setTorchEnabled(nextTorchState);
-    } catch (error) {
-      console.error(
-        "Unable to toggle camera torch:",
-        error
-      );
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
-  /*
-   * Calculate the actual source area represented
-   * by the visible document guide.
-   *
-   * This is important because the <video> uses
-   * object-fit: cover.
-   *
-   * We therefore cannot simply draw the entire video
-   * into the canvas.
-   */
-  const calculateCrop = () => {
-    const video = videoRef.current;
+  // =========================
+  // CAPTURE IMAGE
+  // =========================
 
-    if (!video) {
-      return null;
-    }
-
-    const videoWidth = video.videoWidth;
-    const videoHeight = video.videoHeight;
-
-    if (!videoWidth || !videoHeight) {
-      return null;
-    }
-
-    const videoRect =
-      video.getBoundingClientRect();
-
-    const guideElement =
-      document.querySelector(
-        ".camera-document-guide"
-      ) as HTMLElement | null;
-
-    if (!guideElement) {
-      return null;
-    }
-
-    const guideRect =
-      guideElement.getBoundingClientRect();
-
-    /*
-     * CSS object-fit: cover
-     *
-     * Determine how much the source image was scaled
-     * to fill the video element.
-     */
-    const scale = Math.max(
-      videoRect.width / videoWidth,
-      videoRect.height / videoHeight
-    );
-
-    const renderedWidth =
-      videoWidth * scale;
-
-    const renderedHeight =
-      videoHeight * scale;
-
-    /*
-     * Amount cropped by object-fit: cover.
-     */
-    const offsetX =
-      (renderedWidth - videoRect.width) / 2;
-
-    const offsetY =
-      (renderedHeight - videoRect.height) / 2;
-
-    /*
-     * Position of the guide relative to the
-     * displayed video.
-     */
-    const guideX =
-      guideRect.left - videoRect.left;
-
-    const guideY =
-      guideRect.top - videoRect.top;
-
-    /*
-     * Convert displayed pixels back to camera
-     * source pixels.
-     */
-    let sourceX =
-      (guideX + offsetX) / scale;
-
-    let sourceY =
-      (guideY + offsetY) / scale;
-
-    let sourceWidth =
-      guideRect.width / scale;
-
-    let sourceHeight =
-      guideRect.height / scale;
-
-    /*
-     * Clamp the crop to the actual source image.
-     */
-    sourceX = Math.max(
-      0,
-      Math.min(sourceX, videoWidth)
-    );
-
-    sourceY = Math.max(
-      0,
-      Math.min(sourceY, videoHeight)
-    );
-
-    sourceWidth = Math.min(
-      sourceWidth,
-      videoWidth - sourceX
-    );
-
-    sourceHeight = Math.min(
-      sourceHeight,
-      videoHeight - sourceY
-    );
-
-    if (
-      sourceWidth <= 0 ||
-      sourceHeight <= 0
-    ) {
-      return null;
-    }
-
-    return {
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-    };
-  };
-
-  /*
-   * Capture only the document area.
-   */
-  const captureImage = async () => {
-    if (isCapturing) {
-      return;
-    }
-
+  const captureImage = (): void => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
@@ -357,287 +123,125 @@ const CameraScreen = forwardRef<
       return;
     }
 
+    // Make sure the camera has produced a valid frame.
     if (
-      video.readyState <
-      HTMLMediaElement.HAVE_CURRENT_DATA
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
     ) {
+      setCameraError(
+        "Camera is not ready yet. Please wait a moment and try again."
+      );
       return;
     }
 
-    setIsCapturing(true);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-    try {
-      const crop = calculateCrop();
+    const context = canvas.getContext("2d");
 
-      if (!crop) {
-        throw new Error(
-          "Unable to determine the document capture area."
-        );
-      }
-
-      /*
-       * Output dimensions correspond to the
-       * actual cropped camera resolution.
-       */
-      canvas.width = Math.round(
-        crop.sourceWidth
-      );
-
-      canvas.height = Math.round(
-        crop.sourceHeight
-      );
-
-      const context =
-        canvas.getContext("2d");
-
-      if (!context) {
-        throw new Error(
-          "Unable to create image processing canvas."
-        );
-      }
-
-      context.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      /*
-       * Draw ONLY the guide rectangle from the
-       * actual camera frame.
-       */
-      context.drawImage(
-        video,
-        crop.sourceX,
-        crop.sourceY,
-        crop.sourceWidth,
-        crop.sourceHeight,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      /*
-       * Convert the real canvas image into JPEG.
-       */
-      const blob =
-        await new Promise<Blob | null>(
-          (resolve) => {
-            canvas.toBlob(
-              resolve,
-              "image/jpeg",
-              0.95
-            );
-          }
-        );
-
-      if (!blob) {
-        throw new Error(
-          "Unable to create captured image."
-        );
-      }
-
-      /*
-       * Preview URL.
-       */
-      const previewUrl =
-        URL.createObjectURL(blob);
-
-      setCapturedBlob(blob);
-      setCapturedImage(previewUrl);
-
-      stopCamera();
-    } catch (error) {
-      console.error(
-        "Document capture error:",
-        error
-      );
-
+    if (!context) {
       setCameraError(
-        error instanceof Error
-          ? error.message
-          : "Unable to capture the document."
+        "Unable to capture the image."
       );
-    } finally {
-      setIsCapturing(false);
+      return;
     }
+
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    const image: string = canvas.toDataURL(
+      "image/jpeg",
+      0.95
+    );
+
+    setCapturedImage(image);
+
+    stopCamera();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0]
     if (!file) return
-    const
-     url = URL.createObjectURL(file)
+    const url = URL.createObjectURL(file)
     const blob = await fetch(url).then(r => r.blob())
     stopCamera()
     onCapture(url, blob)
   }
 
+  // =========================
+  // RETAKE IMAGE
+  // =========================
 
-  useImperativeHandle(ref, () => ({
-    capture: () => {
-      void captureImage();
-    },
-  }));
-
-  /*
-   * Discard current capture and open camera again.
-   */
-  const retakeImage = async () => {
-    if (capturedImage) {
-      URL.revokeObjectURL(capturedImage);
-    }
-
-
+  const retakeImage = async (): Promise<void> => {
     setCapturedImage(null);
-    setCapturedBlob(null);
-    setCameraError("");
 
     await startCamera();
   };
 
-  const handleFileUpload = (
-  event: ChangeEvent<HTMLInputElement>
-) => {
-  const file = event.target.files?.[0];
+  // =========================
+  // ACCEPT IMAGE
+  // =========================
 
-<<<<<<< Updated upstream
   const acceptImage = async (): Promise<void> => {
-<<<<<<< HEAD
-    if (!capturedImage) {
-      return;
-    }
-
-    /*
-      IMPORTANT:
-
-      This is where the captured image will be
-      passed to your REAL backend OCR pipeline.
-
-      Example:
-
-      const blob = await fetch(capturedImage)
-        .then((response) => response.blob());
-
-      const formData = new FormData();
-
-      formData.append(
-        "file",
-        blob,
-        "document.jpg"
-      );
-
-      await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      Do NOT add fake OCR results or fake
-      processing values.
-    */
-
-    console.log(
-      "Captured document ready for backend processing."
-    );
-=======
     if (!capturedImage) return
     const blob = await fetch(capturedImage).then(r => r.blob())
     onCapture(capturedImage, blob)
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-=======
-  if (!file) {
-    return;
-  }
-
-  if (!file.type.startsWith("image/")) {
-    setCameraError("Please select a valid image file.");
-    return;
-  }
-
-  if (capturedImage) {
-    URL.revokeObjectURL(capturedImage);
-  }
-
-  const previewUrl = URL.createObjectURL(file);
-
-  setCapturedBlob(file);
-  setCapturedImage(previewUrl);
-  setCameraError("");
-
-  stopCamera();
-};
-
-  /*
-   * Accept the REAL captured image.
-   *
-   * No OCR data is generated here.
-   * The parent application should send this
-   * Blob to the actual backend pipeline.
-   */
-  const acceptImage = async () => {
-    if (!capturedBlob || isSubmitting) {
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      if (onAccept) {
-        await onAccept(capturedBlob);
-      } else {
-        /*
-         * No fake processing is performed.
-         *
-         * The application can connect this callback
-         * to the real backend upload/OCR pipeline.
-         */
-        console.info(
-          "Captured document ready for backend processing.",
-          {
-            size: capturedBlob.size,
-            type: capturedBlob.type,
-          }
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Document submission error:",
-        error
-      );
-
-      setCameraError(
-        error instanceof Error
-          ? error.message
-          : "Unable to submit the document."
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
->>>>>>> Stashed changes
   };
 
-  /*
-   * Release preview URL when component unmounts
-   * or when a new capture replaces it.
-   */
-  useEffect(() => {
-    return () => {
-      if (capturedImage) {
-        URL.revokeObjectURL(capturedImage);
-      }
-    };
-  }, [capturedImage]);
-
   return (
-    <div className="camera-screen">  
+    <div className="mcl-app">
 
-      {/* ================= MAIN CAMERA ================= */}
+      {/* ================= HEADER ================= */}
 
-      <main className="camera-main">
+      <header className="mcl-header">
+
+        <button
+          className="header-icon-button"
+          aria-label="Open menu"
+          type="button"
+        >
+          <span className="material-symbols-outlined">
+            menu
+          </span>
+        </button>
+
+        <div className="mcl-brand">
+
+          <h1>MCL PATR</h1>
+
+          <span>
+            Document Digitization
+          </span>
+
+        </div>
+
+        <button
+          className="header-icon-button"
+          aria-label="Account"
+          type="button"
+        >
+          <span className="material-symbols-outlined">
+            account_circle
+          </span>
+        </button>
+
+      </header>
+
+
+      {/* ================= CAMERA AREA ================= */}
+
+      <main className="camera-container">
+
         {!capturedImage ? (
+
           <>
+            {/* REAL CAMERA */}
+
             <video
               ref={videoRef}
               className="camera-video"
@@ -646,98 +250,33 @@ const CameraScreen = forwardRef<
               muted
             />
 
-            {/* Darkened area outside document guide */}
+            {/* DARK OVERLAY */}
+
             <div className="camera-overlay" />
 
-            {/* ================= DOCUMENT GUIDE ================= */}
 
-            <div className="camera-document-guide">
-              <div className="camera-guide-corner camera-guide-corner--tl" />
-              <div className="camera-guide-corner camera-guide-corner--tr" />
-              <div className="camera-guide-corner camera-guide-corner--bl" />
-              <div className="camera-guide-corner camera-guide-corner--br" />
-
-              <div className="camera-scanner-line" />
-            </div>
-
-            {/* ================= CAMERA CONTROLS ================= */}
-
-            <div className="camera-controls">
-
-              {/* Flashlight */}
-
-              {torchAvailable && (
-    <button
-      type="button"
-      className={`camera-control-button ${
-        torchEnabled
-          ? "camera-control-button--active"
-          : ""
-      }`}
-      onClick={toggleTorch}
-      aria-label={
-        torchEnabled
-          ? "Turn flashlight off"
-          : "Turn flashlight on"
-      }
-    >
-      <span className="material-symbols-outlined">
-        {torchEnabled ? "flash_on" : "flash_off"}
-      </span>
-    </button>
-              )}
-
-              {/* Upload Image */}
-
-              <button
-                type="button"
-    className="upload-image-button"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <span className="material-symbols-outlined">             
-      upload
-                </span>
-
-                <span>Upload Image</span>
-              </button>
-
-              <input
-                ref={fileInputRef}             
-    type="file"
-    accept="image/*"
-    hidden
-                onChange={handleFileUpload}
-              />
-
-              {/* Keep upload button centered when flashlight exists */}
-
-              {torchAvailable && (             
-    <div className="camera-control-spacer" />
-              )}
-
-            </div>             
-
-            {/* ================= CAMERA ERROR ================= */}
+            {/* CAMERA ERROR */}
 
             {cameraError && (
               <div className="camera-error">
+
                 <span className="material-symbols-outlined">
                   videocam_off
                 </span>
 
-                <p>{cameraError}</p>
+                <p>
+                  {cameraError}
+                </p>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    void startCamera();
-                  }}
+                  onClick={startCamera}
                 >
                   Try Again
                 </button>
+
               </div>
             )}
-<<<<<<< Updated upstream
 
 
             {/* DOCUMENT GUIDE */}
@@ -792,8 +331,6 @@ const CameraScreen = forwardRef<
             <div className="camera-controls">
 
               <button
-<<<<<<< HEAD
-=======
                 className="upload-button"
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Upload from gallery"
@@ -805,25 +342,11 @@ const CameraScreen = forwardRef<
               </button>
 
               <button
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
                 className="capture-button"
                 onClick={captureImage}
                 aria-label="Capture document"
                 type="button"
               >
-<<<<<<< HEAD
-
-                <div className="capture-inner">
-
-                  <span className="material-symbols-outlined">
-                    photo_camera
-                  </span>
-
-                </div>
-
-              </button>
-
-=======
                 <div className="capture-inner">
                   <span className="material-symbols-outlined">
                     photo_camera
@@ -839,86 +362,163 @@ const CameraScreen = forwardRef<
                 onChange={handleFileUpload}
               />
 
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
             </div>
 
-=======
->>>>>>> Stashed changes
           </>
-        ) : (
-          /* ================= REVIEW ================= */
 
-          <div className="camera-review">
+        ) : (
+
+          /* ================= IMAGE REVIEW ================= */
+
+          <div className="review-container">
+
             <img
               src={capturedImage}
               alt="Captured document"
-              className="captured-document"
+              className="captured-image"
             />
 
-            <div className="review-top-bar">
+            <div className="review-overlay" />
+
+
+            <div className="review-header">
+
               <span>
                 Review Document
               </span>
+
             </div>
 
+
             <div className="review-actions">
-              {/* CROSS */}
+
+              {/* RETAKE */}
 
               <button
+                className="review-button retake"
+                onClick={retakeImage}
                 type="button"
-                className="review-action review-action--retake"
-                onClick={() => {
-                  void retakeImage();
-                }}
-                disabled={isSubmitting}
                 aria-label="Retake document"
               >
+
                 <span className="material-symbols-outlined">
                   close
                 </span>
 
-                <span>Retake</span>
+                <span>
+                  Retake
+                </span>
+
               </button>
 
-              {/* TICK */}
+
+              {/* ACCEPT */}
 
               <button
+                className="review-button accept"
+                onClick={acceptImage}
                 type="button"
-                className="review-action review-action--accept"
-                onClick={() => {
-                  void acceptImage();
-                }}
-                disabled={isSubmitting}
-                aria-label="Accept document"
+                aria-label="Use captured document"
               >
+
                 <span className="material-symbols-outlined">
                   check
                 </span>
 
                 <span>
-                  {isSubmitting
-                    ? "Processing..."
-                    : "Proceed"}
+                  Use
                 </span>
+
               </button>
+
             </div>
 
-            {cameraError && (
-              <div className="review-error">
-                {cameraError}
-              </div>
-            )}
           </div>
+
         )}
+
+
+        {/* HIDDEN CANVAS */}
 
         <canvas
           ref={canvasRef}
-          className="capture-canvas"
+          style={{
+            display: "none",
+          }}
         />
+
       </main>
-      
+
+
+      {/* ================= MOBILE NAVIGATION ================= */}
+
+      <nav className="bottom-navigation">
+
+        <button
+          className="nav-item active"
+          type="button"
+        >
+
+          <span className="material-symbols-outlined">
+            photo_camera
+          </span>
+
+          <span>
+            Capture
+          </span>
+
+        </button>
+
+
+        <button
+          className="nav-item"
+          type="button"
+        >
+
+          <span className="material-symbols-outlined">
+            inventory_2
+          </span>
+
+          <span>
+            Archive
+          </span>
+
+        </button>
+
+
+        <button
+          className="nav-item"
+          type="button"
+        >
+
+          <span className="material-symbols-outlined">
+            sync
+          </span>
+
+          <span>
+            Queue
+          </span>
+
+        </button>
+
+
+        <button
+          className="nav-item"
+          type="button"
+        >
+
+          <span className="material-symbols-outlined">
+            settings
+          </span>
+
+          <span>
+            Settings
+          </span>
+
+        </button>
+
+      </nav>
+
     </div>
   );
-})
-
-export default CameraScreen;
+}
