@@ -14,10 +14,9 @@ import DockNavigation from "./components/DockNavigation";
 type Screen = "camera" | "processing" | "result" | "history";
 
 const INITIAL_STAGES: ProcessingStage[] = [
-  { id: "upload", label: "Uploading Document", status: "pending" },
-  { id: "processing", label: "Processing", status: "pending" },
-  { id: "ocr", label: "OCR", status: "pending" },
-  { id: "llm", label: "LLM", status: "pending" },
+  { id: "upload", label: "Image Uploaded", status: "pending" },
+  { id: "ocr", label: "Extracting Text", status: "pending" },
+  { id: "llm", label: "Generating your response", status: "pending" },
 ];
 
 export default function App() {
@@ -87,31 +86,28 @@ export default function App() {
     formData.append("file", blob, "document.jpg");
 
     try {
-      updateStage("upload", "processing", "Uploading document...");
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      updateStage("upload", "processing", "Uploading image...");
+      await new Promise((resolve) => setTimeout(resolve, 500));
       updateStage("upload", "complete");
 
-      updateStage("processing", "processing", "Processing image...");
       const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-
-      const response = await fetch(`${apiUrl}/upload/`, {
+      const fetchPromise = fetch(`${apiUrl}/upload/`, {
         method: "POST",
         body: formData,
       });
+
+      updateStage("ocr", "processing", "Running text extraction...");
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      updateStage("ocr", "complete");
+
+      updateStage("llm", "processing", "Generating your response...");
+      const response = await fetchPromise;
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.status}`);
       }
 
       const data = await response.json();
-      updateStage("processing", "complete");
-
-      updateStage("ocr", "processing", "Extracting text...");
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      updateStage("ocr", "complete");
-
-      updateStage("llm", "processing", "Generating structured result...");
-      await new Promise((resolve) => setTimeout(resolve, 300));
       updateStage("llm", "complete");
 
       setExtractedData(data.extracted_data);
