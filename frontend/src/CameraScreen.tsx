@@ -194,44 +194,7 @@ export default function CameraScreen({ onCapture }: CameraScreenProps) {
   };
 
   return (
-    <div className="mcl-app">
-
-      {/* ================= HEADER ================= */}
-
-      <header className="mcl-header">
-
-        <button
-          className="header-icon-button"
-          aria-label="Open menu"
-          type="button"
-        >
-          <span className="material-symbols-outlined">
-            menu
-          </span>
-        </button>
-
-        <div className="mcl-brand">
-
-          <h1>MCL PATR</h1>
-
-          <span>
-            Document Digitization
-          </span>
-
-        </div>
-
-        <button
-          className="header-icon-button"
-          aria-label="Account"
-          type="button"
-        >
-          <span className="material-symbols-outlined">
-            account_circle
-          </span>
-        </button>
-
-      </header>
-
+    <div className="camera-screen-content">
 
       {/* ================= CAMERA AREA ================= */}
 
@@ -449,75 +412,6 @@ export default function CameraScreen({ onCapture }: CameraScreenProps) {
 
       </main>
 
-
-      {/* ================= MOBILE NAVIGATION ================= */}
-
-      <nav className="bottom-navigation">
-
-        <button
-          className="nav-item active"
-          type="button"
-        >
-
-          <span className="material-symbols-outlined">
-            photo_camera
-          </span>
-
-          <span>
-            Capture
-          </span>
-
-        </button>
-
-
-        <button
-          className="nav-item"
-          type="button"
-        >
-
-          <span className="material-symbols-outlined">
-            inventory_2
-          </span>
-
-          <span>
-            Archive
-          </span>
-
-        </button>
-
-
-        <button
-          className="nav-item"
-          type="button"
-        >
-
-          <span className="material-symbols-outlined">
-            sync
-          </span>
-
-          <span>
-            Queue
-          </span>
-
-        </button>
-
-
-        <button
-          className="nav-item"
-          type="button"
-        >
-
-          <span className="material-symbols-outlined">
-            settings
-          </span>
-
-          <span>
-            Settings
-          </span>
-
-        </button>
-
-      </nav>
 
     </div>
   );

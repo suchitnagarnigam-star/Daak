@@ -3,12 +3,6 @@ import "./HistoryScreen.css";
 export default function HistoryScreen() {
   return (
     <div className="history-screen">
-      <header className="history-header">
-        <div>
-          <h1>History</h1>
-          <p>Previously processed documents</p>
-        </div>
-      </header>
 
       <main className="history-content">
         <div className="history-empty-state">

@@ -387,7 +387,11 @@ export default function App() {
         activeItem={activeNavItem}
         onNavigate={handleNavigation}
         onCameraCapture={() => {
-          cameraRef.current?.capture();
+          if (screen !== "camera") {
+            handleReset();
+          } else {
+            cameraRef.current?.capture();
+          }
         }}
       />
     )}

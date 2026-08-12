@@ -20,16 +20,6 @@ const FIELD_LABELS: Record<string, string> = {
 export default function ResultScreen({ data, error, onProcessAnother }: ResultScreenProps) {
   return (
     <div className="result-screen">
-      <header className="result-header">
-        <button className="result-header-button" type="button" aria-label="Open menu">
-          <span className="material-symbols-outlined">menu</span>
-        </button>
-        <h1 className="result-brand">MCL PATR</h1>
-        <button className="result-header-button" type="button" aria-label="Account">
-          <span className="material-symbols-outlined">account_circle</span>
-        </button>
-      </header>
-
       <main className="result-main">
         <section className="result-heading">
           <div>
@@ -57,17 +47,6 @@ export default function ResultScreen({ data, error, onProcessAnother }: ResultSc
             </div>
           ))}
         </section>
-
-        {onProcessAnother && (
-          <div className="result-footer">
-            <button type="button" className="process-another-button" onClick={onProcessAnother}>
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                add_a_photo
-              </span>
-              Process Another Document
-            </button>
-          </div>
-        )}
       </main>
     </div>
   )
