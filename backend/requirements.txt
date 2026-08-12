@@ -7,7 +7,6 @@ numpy
 python-dotenv
 python-multipart
 
-
 mistralai
 
 supabase
@@ -15,6 +14,5 @@ supabase
 anthropic
 google-genai
 pytest
-
 
 httpx
