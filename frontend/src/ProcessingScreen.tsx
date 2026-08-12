@@ -29,150 +29,16 @@ interface ProcessingScreenProps {
    */
   onAbort?: () => void;
 
-  /**
-   * Optional navigation callbacks.
-   */
-  onCapture?: () => void;
-  onArchive?: () => void;
-  onSettings?: () => void;
 }
 
 export default function ProcessingScreen({
   stages,
   session,
   onAbort,
-  onCapture,
-  onArchive,
-  onSettings,
 }: ProcessingScreenProps) {
   return (
     <div className="processing-screen">
-
-      {/* =========================================
-          HEADER
-          ========================================= */}
-
-      <header className="processing-header">
-
-        <button
-          className="processing-header-button"
-          type="button"
-          aria-label="Open menu"
-        >
-          <span className="material-symbols-outlined">
-            menu
-          </span>
-        </button>
-
-        <div className="processing-brand">
-          MCL PATR
-        </div>
-
-        <button
-          className="processing-header-button"
-          type="button"
-          aria-label="Account"
-        >
-          <span className="material-symbols-outlined">
-            account_circle
-          </span>
-        </button>
-
-      </header>
-
-
-      {/* =========================================
-          DESKTOP CONTENT WRAPPER
-          ========================================= */}
-
-      <div className="processing-layout">
-
-        {/* =========================================
-            DESKTOP NAVIGATION
-            ========================================= */}
-
-        <aside className="processing-sidebar">
-
-          <div className="processing-sidebar-title">
-            Administration
-          </div>
-
-          <nav className="processing-sidebar-nav">
-
-            <button
-              type="button"
-              className="processing-nav-item"
-            >
-              <span className="material-symbols-outlined">
-                dashboard
-              </span>
-
-              <span>
-                Dashboard
-              </span>
-            </button>
-
-
-            <button
-              type="button"
-              className="processing-nav-item active"
-            >
-              <span className="material-symbols-outlined">
-                description
-              </span>
-
-              <span>
-                Document Logs
-              </span>
-            </button>
-
-
-            <button
-              type="button"
-              className="processing-nav-item"
-            >
-              <span className="material-symbols-outlined">
-                group
-              </span>
-
-              <span>
-                User Management
-              </span>
-            </button>
-
-
-            <button
-              type="button"
-              className="processing-nav-item"
-            >
-              <span className="material-symbols-outlined">
-                terminal
-              </span>
-
-              <span>
-                Technical Logs
-              </span>
-            </button>
-
-
-            <button
-              type="button"
-              className="processing-nav-item"
-            >
-              <span className="material-symbols-outlined">
-                settings_ethernet
-              </span>
-
-              <span>
-                System Status
-              </span>
-            </button>
-
-          </nav>
-
-        </aside>
-
-
+      
         {/* =========================================
             MAIN
             ========================================= */}
@@ -315,79 +181,7 @@ export default function ProcessingScreen({
 
         </main>
 
-      </div>
-
-
-      {/* =========================================
-          MOBILE NAVIGATION
-          ========================================= */}
-
-      <nav className="processing-mobile-nav">
-
-        <button
-          type="button"
-          className="mobile-nav-item"
-          onClick={onCapture}
-        >
-          <span className="material-symbols-outlined">
-            photo_camera
-          </span>
-
-          <span>
-            Capture
-          </span>
-        </button>
-
-
-        <button
-          type="button"
-          className="mobile-nav-item"
-          onClick={onArchive}
-        >
-          <span className="material-symbols-outlined">
-            inventory_2
-          </span>
-
-          <span>
-            Archive
-          </span>
-        </button>
-
-
-        <button
-          type="button"
-          className="mobile-nav-item active"
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{
-              fontVariationSettings: "'FILL' 1",
-            }}
-          >
-            sync
-          </span>
-
-          <span>
-            Queue
-          </span>
-        </button>
-
-
-        <button
-          type="button"
-          className="mobile-nav-item"
-          onClick={onSettings}
-        >
-          <span className="material-symbols-outlined">
-            settings
-          </span>
-
-          <span>
-            Settings
-          </span>
-        </button>
-
-      </nav>
+      
 
     </div>
   );
