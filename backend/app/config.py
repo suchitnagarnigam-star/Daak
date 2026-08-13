@@ -1,9 +1,5 @@
 from dotenv import load_dotenv
 import os
-<<<<<<< HEAD
-from dotenv import load_dotenv
-=======
->>>>>>> 607c9ba860db4269d0c7a35ef4ad53871ce88c0d
 
 try:
     import anthropic
@@ -47,17 +43,9 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
-<<<<<<< HEAD
-=======
-
->>>>>>> 607c9ba860db4269d0c7a35ef4ad53871ce88c0d
 
 # ==========================
 # Google Apps Script Sheets
 # ==========================
 SHEETS_WEBHOOK_URL = os.getenv("SHEETS_WEBHOOK_URL")
-<<<<<<< HEAD
 SHEETS_SECRET = os.getenv("SHEETS_SECRET")
-=======
-SHEETS_SECRET      = os.getenv("SHEETS_SECRET")
->>>>>>> 607c9ba860db4269d0c7a35ef4ad53871ce88c0d

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import CameraScreen from "./screens/CameraScreen";
 
@@ -26,6 +26,23 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeNavItem, setActiveNavItem] = useState<string>("scan");
   const [cameraSessionKey, setCameraSessionKey] = useState(0);
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setError(null);
+      setStages(INITIAL_STAGES);
+      setActiveNavItem("scan");
+      setScreen("camera");
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [error]);
 
   /*
    * =====================================================
@@ -123,7 +140,7 @@ export default function App() {
       setScreen("result");
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
+      setError("Something went wrong. Please try again later.");
       updateStage("upload", "error", message);
       updateStage("ocr", "error");
       updateStage("llm", "error");
@@ -143,7 +160,12 @@ export default function App() {
           <CameraScreen key={cameraSessionKey} onAccept={handleProceed} />
         </div>
         <div className={`screen ${screen === "processing" ? "active" : ""}`} id="processing" data-od-id="processing-screen">
-          <ProcessingScreen stages={stages} session={{ source: "Camera", timestamp: new Date().toLocaleString() }} onAbort={handleReset} />
+          <ProcessingScreen
+            stages={stages}
+            session={{ source: "Camera", timestamp: new Date().toLocaleString() }}
+            onAbort={handleReset}
+            error={error}
+          />
         </div>
         <div className={`screen ${screen === "history" ? "active" : ""}`} id="history" data-od-id="history-screen">
           <HistoryScreen />

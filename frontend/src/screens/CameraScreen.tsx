@@ -16,6 +16,7 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<CapturedImage[]>([]);
   const [images, setImages] = useState<CapturedImage[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -218,13 +219,53 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
               </button>
             </div>
 
-            <div className="preview-strip" aria-live="polite" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(88px, 1fr))", gap: "10px", marginBottom: "12px" }}>
+            <div
+              className="preview-strip"
+              aria-live="polite"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "10px",
+                marginBottom: "12px",
+                width: "100%",
+              }}
+            >
               {images.map((image, index) => (
-                <div key={image.id} style={{ position: "relative" }}>
-                  <img src={image.previewUrl} alt={`Page ${index + 1}`} style={{ width: "100%", height: "110px", objectFit: "cover", borderRadius: "8px" }} />
+                <div
+                  key={image.id}
+                  onClick={() => setSelectedImage(image.previewUrl)}
+                  style={{
+                    position: "relative",
+                    width: "calc((100% - 20px) / 3)",
+                    minWidth: "88px",
+                    maxWidth: "110px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={image.previewUrl}
+                    alt={`Page ${index + 1}`}
+                    style={{
+                      width: "100%",
+                      height: "110px",
+                      objectFit: "cover",
+                      borderRadius: "8px",
+                      display: "block",
+                    }}
+                  />
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px", gap: "6px" }}>
                     <span className="hint">Page {index + 1}</span>
-                    <button type="button" className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "11px" }} onClick={() => removeImage(image.id)}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: "4px 8px", fontSize: "11px" }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeImage(image.id);
+                      }}
+                    >
                       Remove
                     </button>
                   </div>
@@ -232,9 +273,9 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: "12px", width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", width: "100%" }}>
               <button type="button" className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
-                Add More
+                Upload Image
               </button>
               <button type="button" className="btn btn-primary" onClick={() => void handleProceed()} disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Proceed"}
@@ -257,6 +298,66 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
         {cameraError && (
           <div className="review-error" style={{ marginTop: "12px" }}>
             {cameraError}
+          </div>
+        )}
+
+        {selectedImage && (
+          <div
+            onClick={() => setSelectedImage(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 2000,
+              padding: "20px",
+            }}
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                position: "relative",
+                width: "min(90vw, 420px)",
+                background: "#111",
+                borderRadius: "12px",
+                overflow: "hidden",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedImage(null)}
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  border: "none",
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.2)",
+                  color: "#fff",
+                  width: "32px",
+                  height: "32px",
+                  fontSize: "20px",
+                  cursor: "pointer",
+                  zIndex: 2,
+                }}
+              >
+                ×
+              </button>
+              <img
+                src={selectedImage}
+                alt="Selected document page"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  maxHeight: "75vh",
+                  objectFit: "contain",
+                  background: "#000",
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

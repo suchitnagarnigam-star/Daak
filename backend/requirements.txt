@@ -6,21 +6,11 @@ numpy
 
 python-dotenv
 python-multipart
-<<<<<<< HEAD
-=======
-
->>>>>>> 607c9ba860db4269d0c7a35ef4ad53871ce88c0d
 mistralai
 
 supabase
 
 anthropic
 google-genai
-<<<<<<< HEAD
 httpx
 pytest
-=======
-pytest
-
-httpx
->>>>>>> 607c9ba860db4269d0c7a35ef4ad53871ce88c0d
