@@ -84,12 +84,12 @@ export default function HistoryScreen() {
     }
   };
 
-  const getCardType = (item: HistoryItem) => {
-    const dept = item.llm_result.department;
-    if (!dept) return "DOCUMENT";
-    if (dept.toLowerCase().includes("complaint") || dept.toLowerCase().includes("b&r") || dept.toLowerCase().includes("health")) return "COMPLAINT CARD";
-    return "DOCUMENT";
-  };
+  // const getCardType = (item: HistoryItem) => {
+  //   const dept = item.llm_result.department;
+  //   if (!dept) return "DOCUMENT";
+  //   if (dept.toLowerCase().includes("complaint") || dept.toLowerCase().includes("b&r") || dept.toLowerCase().includes("health")) return "COMPLAINT CARD";
+  //   return "DOCUMENT";
+  // };
 
   return (
     <>
