@@ -1,4 +1,4 @@
-# MCL Patr — Context Handoff (August 12, 2026)
+# MCL Patr — Context Handoff (August 14, 2026)
 
 ## What is this?
 MCL Patr is a document digitization system for Municipal Corporation Ludhiana (MCL). Extracts and structures text from multilingual municipal correspondence (English, Hindi, Punjabi/Gurmukhi).
@@ -9,7 +9,7 @@ Yuvraj is learning-by-doing — wants explanation of what/why during coding, not
 - https://github.com/yuvrajsingh0125/MCL-OCR.git (public)
 - `main` — merged, deployed
 - `uv-dev` — Yuvraj: backend, LLM, routing, UI, persistence
-- `AD-dev` — Arshdeep (AD): OpenCV preprocessing, OCR engine layer, frontend camera
+- `frontend` — Arshdeep (AD): OpenCV preprocessing, OCR engine layer, frontend camera, screens
 - Arshdeep's files are off-limits during refactors; changes to shared interfaces need coordination
 - Git workflow: Yuvraj pushes to `uv-dev`; Arshdeep does `git fetch origin` + `git checkout origin/uv-dev -- .` before her PR
 
@@ -17,33 +17,60 @@ Yuvraj is learning-by-doing — wants explanation of what/why during coding, not
 - Frontend: https://mcl-ocr.vercel.app (Vercel, auto-deploy on push to main)
 - Backend: https://mcl-ocr.onrender.com (Render free tier — ~50s cold start, upgrade to Starter $7/mo recommended before commissioner demo)
 
-## Current Stack (verified from repo's docs/CODEBASE_REPORT.md)
+## Current Stack
 ```
-React 19 + Vite + TS → FastAPI → OpenCV → Mistral OCR (primary) / PaddleOCR (fallback) → Claude → JSON file output
+React 19 + Vite + TS
+    ↓
+FastAPI (POST /upload/, GET /history/)
+    ↓
+OpenCV preprocessing
+    ↓
+Mistral OCR (primary) — per image
+    ↓
+Combine OCR with page markers
+    ↓
+Claude — single call on combined text
+    ↓
+Supabase — serial number generation + document insert (status: pending)
+    ↓
+Google Sheets — webhook push (permanent archive)
+    ↓
+Local JSON output (output/ folder) — audit trail + history fallback
 ```
-Supabase and Google Sheets are configured in `config.py` but **not yet wired into the processing flow** — this was previously misreported as "working," corrected on inspection of actual repo docs.
 
 ## File Structure (current, real)
 ```
 backend/app/
-  main.py                       # FastAPI init, CORS (localhost:5173 only), router registration
-  config.py                     # API client init: Anthropic, Mistral, Gemini(optional), Supabase(unused)
+  main.py                         # FastAPI init, CORS, routers: health + upload + history
+  config.py                       # Anthropic, Gemini (optional), Supabase client init
   routes/
-    upload.py                   # POST /upload/ — orchestrates full pipeline
+    upload.py                     # POST /upload/ — multi-image pipeline orchestration
+    history.py                    # GET /history/ — reads output/ JSONs, newest-first
     health.py
   services/
-    mistral_ocr_services.py     # Primary OCR, returns pages[0].markdown
-    paddle_ocr_service.py       # Fallback OCR (renamed from ocr_service.py)
-    claude_service.py           # Structured extraction, 8 fields
-    opencv_services.py          # Preprocessing: blur, sharpen, denoise, brightness/contrast
+    mistral_ocr_services.py       # Mistral OCR API, returns pages[0].markdown
+    claude_service.py             # Structured extraction, 8 fields, 22 MCL departments
+    opencv_services.py            # Preprocessing: blur, sharpen, denoise
+    supabase_service.py           # insert_data() → generates serial_number MCL/{year}/{N}
+    sheets_service.py             # push_to_sheets(llm_result, filename, serial_number)
+    gemini_service.py             # Available, not in main pipeline
   utils/
-    file_utils.py                # save_uploaded_file(), save_result_json()
-  schemas/                       # EMPTY — no Pydantic models yet
+    file_utils.py                 # save_uploaded_file(), save_result_json()
+  schemas/                        # EMPTY — no Pydantic models yet
+
 frontend/src/
-  App.tsx                        # Single-file-upload UI, dark theme, scanner aesthetic
+  App.tsx                         # Global header (MCL DAAK), CircularNavigation footer, screen routing
+  index.css                       # Design system tokens and global styles
   main.tsx
+  components/
+    CircularNavigation.tsx        # Camera | Queue | History footer nav
+  screens/
+    CameraScreen.tsx              # Live camera + file upload + image review
+    ProcessingScreen.tsx          # Upload/OCR/LLM animated stage tracker
+    ResultScreen.tsx              # Extracted data grid + raw OCR collapsible
+    HistoryScreen.tsx             # Past submissions list + detail modal (serial_number shown)
+    QueueScreen.tsx               # Placeholder
 ```
-Note: earlier session context described `CameraScreen.tsx`, `ReviewScreen.tsx`, `ProcessingScreen.tsx`, `ResultScreen.tsx` as separate components — the actual repo report shows a single `App.tsx` handling everything. **This discrepancy is unresolved — verify actual frontend file structure next session.**
 
 ## Extracted Fields (8, all English, null if not found)
 ```json
@@ -52,7 +79,34 @@ Note: earlier session context described `CameraScreen.tsx`, `ReviewScreen.tsx`, 
   "sender_name": "", "sender_contact": null, "receiver": "", "reference_number": null
 }
 ```
-`department` matched against hardcoded list of 22 MCL departments (currently hardcoded in claude_service.py — flagged as tech debt).
+`department` matched against hardcoded list of 22 MCL departments in `claude_service.py` — known tech debt.
+
+## Serial Number Format
+```
+MCL/{year}/{sequential_number}
+```
+- Starts at 1001 if no records exist for the current year.
+- Generated by `supabase_service.insert_data()` — queries max existing, increments by 1, inserts row.
+
+## API Contracts
+
+### POST /upload/
+```
+Body: multipart/form-data, field name: files (list)
+Response: {
+  serial_number, message, submission_id, status,
+  file_count, files[], images[], output_path, extracted_data
+}
+```
+
+### GET /history/
+```
+Response: [
+  { id, serial_number, created_at, llm_result, ocr_text },
+  ...  // sorted newest-first
+]
+```
+Reads from local `output/` JSON files. Supports both new format (`extracted_data`/`combined_ocr`) and old format (`llm_result`/`ocr_text`).
 
 ## Hard Constraints (non-negotiable)
 - No auth / RBAC
@@ -61,69 +115,32 @@ Note: earlier session context described `CameraScreen.tsx`, `ReviewScreen.tsx`, 
 - No permanent image storage in DB
 - No centralized MCL platform
 
-## Deliverables Produced This Session
-1. **Mermaid flowcharts** — pipeline flow, sequence diagram, planned multi-image flow
-2. **README.md** — rewritten to reflect actual current state (old repo README was stale, referenced Google Document AI which is gone)
-3. **DESIGN.md** — rationale doc covering: why OCR/LLM are separate services, why Mistral is primary over PaddleOCR, why Claude gets text not images, why `vid` is server-generated, why `img_index` is local not global, why object is created before files are saved, why OCR runs per-image but extraction runs once on combined text, why Supabase isn't wired yet, and two **open unresolved risks**: Punjabi/Gurmukhi OCR fallback quality (unverified), and undefined behavior for partial multi-image OCR failure
+## What Was Done This Session
+1. Pulled Arshdeep's `frontend` branch — updated upload route to multi-image, restructured frontend screens.
+2. Fixed `sheets_service.py` — added `serial_number` as third param to `push_to_sheets()`.
+3. Fixed `history.py` — reads `extracted_data`/`combined_ocr` (new format) with fallback to old fields; returns `serial_number`.
+4. Fixed `HistoryScreen.tsx` — shows `serial_number` on cards; sorted newest-first via backend.
+5. Updated all docs: `PROJECT_CONTEXT.md`, `CODEBASE_REPORT.md`, `context_handoff.md`.
 
-Both files are in `/mnt/user-data/outputs/` from prior turns — not yet committed to the repo.
+## What Needs To Be Done Next
+1. **Switch history from local files to Supabase** — `GET /history/` currently scans `output/` JSON files. Should query `document_submissions` table in Supabase directly so deployed backend returns real data.
+2. **Point frontend to deployed backend** — `VITE_API_URL` env var needs to be set to `https://mcl-ocr.onrender.com` in Vercel for production. Currently defaults to `localhost:8000`.
+3. **Resolve partial OCR failure** — if one of N images fails Mistral OCR, behavior is currently hard 500. Decide: fail all or continue with that page's `ocr_md: null`.
+4. **Human review/edit step** — edit extracted fields before final Supabase save.
+5. **Pydantic schemas** — `schemas/` is empty, no request/response validation.
+6. **Remove `pytest` from production requirements** — currently included in Docker image.
 
-## Multi-Image Object Structure (designed, not yet implemented)
-Worked out via whiteboard photos across two sessions:
-
-```python
-class ImageItem(BaseModel):
-    img_path: str
-    img_index: int          # local to the DocumentSubmission — avoids concurrency collisions
-    ocr_md: str | None = None
-
-class DocumentSubmission(BaseModel):
-    vid: str                 # uuid4(), generated server-side on request receipt
-    status: str = "pending"  # pending → processing → complete
-    images_list: list[ImageItem]
-    # 8 fields below — null until Claude processes combined OCR text
-    date: str | None = None
-    subject: str | None = None
-    summary: str | None = None
-    department: str | None = None
-    sender_name: str | None = None
-    sender_contact: str | None = None
-    receiver: str | None = None
-    reference_number: str | None = None
-```
-
-**Key sequencing decisions (settled, reasoning in DESIGN.md):**
-- `vid` generated first, before any file is saved
-- `DocumentSubmission` object created next (empty `images_list`) — before files are saved, so a mid-request crash doesn't orphan files with no tracked owner
-- Files saved in a loop, each appended as an `ImageItem`
-- OCR runs per-image (Mistral can't batch)
-- All `ocr_md` values concatenated → sent to Claude **once** → populates the top-level 8 fields (not per-image) — avoids contradictory field values across pages
-- Function initiates the object; the object does not call functions itself (dumb data container)
-
-## Unanswered / Needs Decision Next Session
-1. **Partial OCR failure** — if image 2 of 3 fails, does the whole submission fail, or proceed with `ocr_md: null` for that image?
-2. **Frontend file structure discrepancy** — confirm whether `App.tsx` is monolithic or split into Camera/Review/Processing/Result screens (conflicting info between sessions)
-3. **Supabase schema** — not yet designed. Should mirror `DocumentSubmission` fields directly. **Reminder: use Supabase MCP to create/manage the table from within the chat**, don't hand-write SQL blind
-4. **API contract change** — `/upload/` currently takes a single file; needs to become `files: list[UploadFile]` for multi-image. Frontend and backend must change together.
-5. **Prompt update needed** — Claude's extraction prompt needs to explicitly state it's receiving concatenated multi-page OCR text, or it may misinterpret page boundaries as separate documents
-
-## Pending / Roadmap (unordered, from repo + sessions)
-- Multi-image support (1–3 images) — designed, not implemented
-- Supabase integration — schema not started
-- Google Sheets sync — configured, not implemented in flow (per actual repo report — contradicts earlier "working" claim)
-- Pydantic schemas — `schemas/` directory is empty
-- Human review flow — edit extracted fields before save
-- Document view/browse page (depends on Supabase)
-- Punjabi/Gurmukhi OCR verification on PaddleOCR fallback path — known risk, not resolved
-- Remove `pytest` from production requirements
-- Office network IP restriction
+## Pending Technical Debt
+- `config.py` line 1: stale unused `from anthropic.types import completion_create_params` import.
+- `department` hardcoded list of 22 MCL departments in `claude_service.py`.
+- Punjabi/Gurmukhi OCR quality on Mistral — not yet verified with real Punjabi documents.
+- `schemas/` directory is empty; no Pydantic validation models.
 
 ## Known Bug Patterns in This Codebase (for review passes)
-Missing imports, defined-but-uncalled functions, hardcoded paths ignoring parameters, stale config variables, trailing commas creating unintended tuples, try/except blocks misplaced inside dict literals, json.dumps on already-string output.
+Missing imports, defined-but-uncalled functions, hardcoded paths ignoring parameters, stale config variables, trailing commas creating unintended tuples, try/except blocks misplaced inside dict literals, `json.dumps()` on already-string output.
 
 ## Communication Preferences (Yuvraj)
-- Learning-by-doing — don't hand over full solutions, explain what/why during code
-- Only give code when explicitly asked
-- Keep recommendations minimal, not padded
-- Be direct — say when something is wrong, no hedging
-- Under deadline pressure, he'll explicitly ask for more directive output — follow that shift when stated
+- Learning-by-doing — explain what/why during code
+- Direct — say when something is wrong, no hedging
+- Minimal unsolicited recommendations
+- Under deadline pressure, will ask for more directive output — follow that shift when stated

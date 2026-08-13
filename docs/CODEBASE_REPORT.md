@@ -1,245 +1,210 @@
 # MCL-OCR Codebase Report
 
+**Last updated:** August 14, 2026
+
 ## Overview
-This repository contains a full-stack OCR document processing prototype for Municipal Corporation Ludhiana (MCL). The current implementation combines a FastAPI backend with multiple OCR strategies (Mistral with Paddle fallback), image preprocessing, and LLM-based field extraction, paired with a React + Vite frontend for document upload and result display.
+
+This repository contains a full-stack OCR document processing system for Municipal Corporation Ludhiana (MCL). The implementation combines a FastAPI backend with Mistral OCR, OpenCV preprocessing, Claude LLM extraction, Supabase persistence, and Google Sheets archival — paired with a React + Vite frontend for multi-image document capture and result display.
 
 ## Current Repository Structure
 
-- `backend/` - Python backend service and deployment assets.
-  - `app/` - FastAPI application package.
-    - `main.py` - FastAPI app initialization with CORS middleware and router registration.
-    - `config.py` - environment variable loading and external API client initialization.
-    - `routes/` - API endpoints for health checks and document processing.
-    - `services/` - image preprocessing, dual OCR engines, and LLM extraction.
-    - `utils/` - file I/O and result persistence helpers.
-    - `schemas/` - request/response model placeholders (currently empty).
-  - `tests/` - unit and integration tests.
-  - `requirements.txt` - Python dependencies including mistralai.
-  - `Dockerfile` and `docker-compose.yml` - container deployment configuration.
-- `frontend/` - React + Vite frontend application.
-  - `src/App.tsx` - main document upload UI with image preview and extracted results display.
-  - `src/main.tsx` - app entry point.
-  - `src/App.css`, `src/index.css` - styling.
-  - `package.json` - frontend dependencies and build scripts.
-- `docs/` - project documentation including this report.
+- `backend/` — Python backend service and deployment assets.
+  - `app/` — FastAPI application package.
+    - `main.py` — FastAPI app initialization with CORS middleware and router registration.
+    - `config.py` — environment variable loading and external API client initialization.
+    - `routes/` — API endpoints: upload, history, health.
+    - `services/` — image preprocessing, OCR, LLM extraction, persistence services.
+    - `utils/` — file I/O and result persistence helpers.
+    - `schemas/` — request/response model placeholders (currently empty).
+  - `requirements.txt` — Python dependencies.
+  - `Dockerfile` and `docker-compose.yml` — container deployment configuration.
+- `frontend/` — React + Vite frontend application.
+  - `src/App.tsx` — app shell with global header and `CircularNavigation` footer.
+  - `src/screens/` — individual screen components (Camera, Processing, Result, History, Queue).
+  - `src/components/` — shared components (CircularNavigation, etc.).
+  - `src/index.css` — global design system styles.
+  - `package.json` — frontend dependencies and build scripts.
+- `docs/` — project documentation.
 
 ## Backend Architecture
 
 ### 1. Application Entry
-The backend entry point is [backend/app/main.py](backend/app/main.py). It:
-- initializes the FastAPI app with logging configuration.
-- adds CORS middleware configured for `http://localhost:5173` (React frontend development server).
-- registers two routers: `health_router` and `upload_router`.
+`backend/app/main.py`:
+- Initializes FastAPI with logging configuration.
+- CORS middleware configured for localhost:5173 and the deployed Vercel frontend.
+- Registers three routers: `health_router`, `upload_router`, `history_router`.
 
 ### 2. Configuration and API Clients
-The file [backend/app/config.py](backend/app/config.py) manages environment configuration and external API client initialization:
-- **Gemini API**: Optional Google Gemini client initialization.
-- **Anthropic API**: Claude client for structured field extraction.
-- **Mistral API**: Support for Mistral OCR (loaded separately in mistral service).
-- **Supabase**: Optional database configuration (not yet integrated).
-- **Google Sheets & Drive**: Environment variables for future integration.
+`backend/app/config.py`:
+- **Anthropic Claude** — structured field extraction.
+- **Mistral** — loaded separately in the OCR service.
+- **Gemini** — optional, available but not in the main pipeline.
+- **Supabase** — `create_client()` initialized at startup; used by `supabase_service.py`.
+- **Google Sheets** — webhook URL and secret loaded from env.
 
-All clients are initialized with graceful fallback if API keys are missing.
+> Note: line 1 has a stale unused import `from anthropic.types import completion_create_params` — safe to remove.
 
-### 3. Upload Flow with Dual OCR Strategy
-The main endpoint in [backend/app/routes/upload.py](backend/app/routes/upload.py) orchestrates the processing pipeline:
+### 3. Multi-Image Upload Flow
+`backend/app/routes/upload.py` — `POST /upload/` accepts `files: list[UploadFile]`:
 
-1. **File Upload**: Saves uploaded image to `uploads/` folder.
-2. **Image Preprocessing**: Applies OpenCV enhancements via `process_image()`.
-3. **OCR (Dual Strategy)**:
-   - Attempts **Mistral OCR** first (via `mistral_process_ocr()`).
-   - Falls back to **Paddle OCR** on failure (via `paddle_process_ocr()`).
-   - Logs failures for debugging.
-4. **Structured Extraction**: Passes OCR text to Claude via `process_document()`.
-5. **Result Persistence**: Saves JSON output with metadata to `output/` folder with timestamp-based naming for traceability.
-6. **Response**: Returns extracted data and output file path to frontend.
+1. **Validate** — reject empty file list.
+2. **submission_id** — `uuid4()` generated immediately on request receipt.
+3. **Per-image loop**:
+   - Save original → OpenCV preprocessing → Mistral OCR.
+   - Store `{ img_index, filename, img_path, processed_path, ocr_md }` per image.
+4. **Combine OCR** — concatenate all page texts with `===== BEGIN PAGE N =====` / `===== END PAGE N =====` markers.
+5. **Claude** — single LLM call on the combined OCR text.
+6. **Supabase** — `insert_data(llm_result)` generates and stores a `serial_number` (`MCL/{year}/{N}`).
+7. **Google Sheets** — `push_to_sheets(llm_result, filename, serial_number)` via webhook.
+8. **Save JSON** — full result written to `output/` with `serial_number`, `submission_id`, per-image metadata, combined OCR, and `extracted_data`.
+9. **Response** — returns `serial_number`, `extracted_data`, `submission_id`, `file_count`, per-image list, `output_path`.
 
-### 4. File Handling and Traceability
-The utility module [backend/app/utils/file_utils.py](backend/app/utils/file_utils.py) provides:
-- `save_uploaded_file()`: Stores raw uploaded images in `uploads/`.
-- `save_result_json()`: Writes processing results to `output/<sanitized_filename>_<timestamp>.json`.
-  - Includes: original filename, original path, processed path, OCR text, LLM result, timestamp.
-  - Enables complete traceability from source image to extracted result.
+### 4. Serial Number Generation
+`backend/app/services/supabase_service.py` — `insert_data(llm_result)`:
+- Queries Supabase `document_submissions` table for highest existing serial in `MCL/{year}/%` pattern.
+- Increments from 1000 if no records exist for the current year.
+- Inserts a new row with all 8 extracted fields + `status: pending`.
+- Returns the new `serial_number` string (e.g. `MCL/2026/1001`).
 
-### 5. Image Preprocessing
-The service [backend/app/services/opencv_services.py](backend/app/services/opencv_services.py):
-- Reads the image via OpenCV.
-- Converts BGR (OpenCV default) to RGB.
-- Applies brightness and contrast adjustments (configurable, defaults to no-op).
-- Applies Gaussian blur for denoising.
-- Applies sharpening kernel filter.
-- Validates 3-channel RGB format.
-- Converts back to BGR and writes to `processed/<filename>`.
-- Returns processed image path.
+### 5. Google Sheets Sync
+`backend/app/services/sheets_service.py` — `push_to_sheets(llm_result, filename, serial_number)`:
+- Skips gracefully if `SHEETS_WEBHOOK_URL` is not configured.
+- POSTs payload `{ secret, data: { ...llm_result, serial_number, filename, processed_at (IST) } }` to the Apps Script webhook.
 
-### 6. OCR Service: Mistral (Primary)
-The service [backend/app/services/mistral_ocr_services.py](backend/app/services/mistral_ocr_services.py):
-- Validates input file existence and type.
-- Encodes the image to base64.
-- Sends to Mistral OCR API with `mistral-ocr-latest` model.
-- Returns markdown-formatted OCR output from `ocr_response.pages[0].markdown`.
-- Supports MIME type detection for JPEG and PNG.
-- Includes commented schema for future structured extraction via Mistral.
+### 6. History Endpoint
+`backend/app/routes/history.py` — `GET /history/`:
+- Scans all JSON files in the `output/` directory.
+- Reads `extracted_data` (new format) or falls back to `llm_result` (old format).
+- Reads `combined_ocr` (new) or falls back to `ocr_text` (old).
+- Returns items sorted by `created_at` descending (newest first).
+- Each item includes: `id`, `serial_number`, `created_at`, `llm_result`, `ocr_text`.
 
-### 7. OCR Service: Paddle (Fallback)
-The service [backend/app/services/paddle_ocr_service.py](backend/app/services/paddle_ocr_service.py):
-- (Renamed from original `ocr_service.py`)
-- Loads PaddleX OCR pipeline at module import.
-- Validates input file existence.
-- Runs `ocr_pipeline.predict()` on the image.
-- Extracts text from results and joins into single string.
-- Returns dict with: file path, raw results, combined text.
+### 7. File Handling
+`backend/app/utils/file_utils.py`:
+- `save_uploaded_file()` — stores raw uploads in `uploads/`.
+- `save_result_json()` — writes to `output/<sanitized_filename>_<timestamp>.json`.
 
-### 8. LLM-Based Extraction
-The service [backend/app/services/claude_service.py](backend/app/services/claude_service.py):
-- Uses Anthropic Claude API for structured field extraction.
-- Builds a prompt for the LLM with OCR text and instructions.
-- Expects JSON response with fields: date, subject, summary, department, sender_name, sender_contact, receiver, reference_number.
-- Parses JSON response and returns structured dict.
-- Handles JSON parse errors gracefully.
+### 8. Image Preprocessing
+`backend/app/services/opencv_services.py`:
+- BGR → RGB conversion, brightness/contrast adjustment, Gaussian blur, sharpening kernel.
+- Writes processed image to `processed/<filename>`.
 
-### 9. Tests
-The test suite in [backend/tests/test_mistral_service.py](backend/tests/test_mistral_service.py) covers:
-- Mock testing of Mistral OCR integration.
-- Error handling and fallback scenarios.
+### 9. OCR: Mistral (Primary)
+`backend/app/services/mistral_ocr_services.py`:
+- Base64-encodes image, sends to Mistral OCR API (`mistral-ocr-latest`).
+- Returns `pages[0].markdown` text.
+
+### 10. LLM Extraction: Claude
+`backend/app/services/claude_service.py`:
+- Receives combined multi-page OCR text.
+- Extracts 8 fields as JSON: `date`, `subject`, `summary`, `department`, `sender_name`, `sender_contact`, `receiver`, `reference_number`.
+- `department` matched against hardcoded list of 22 MCL departments (known tech debt).
 
 ## Frontend Architecture
 
-### 1. Framework and Build Setup
-The frontend uses:
-- **React 19** + TypeScript for type-safe UI components.
-- **Vite** for fast development server and optimized builds.
-- **Tailwind CSS** for styling (configured via package.json).
-- Development server runs on `http://localhost:5173`.
+### 1. Framework
+- React 19 + TypeScript + Vite.
+- Custom CSS design system (`index.css`) — no Tailwind.
+- Dev server: `http://localhost:5173`.
 
-### 2. Main Application Component
-The file [frontend/src/App.tsx](frontend/src/App.tsx) implements a document scanner UI with:
-- **File Input**: Hidden input element for image selection.
-- **Image Preview**: 3:4 aspect ratio viewfinder showing selected image.
-- **Scan Button**: Uploads image to backend `/upload/` endpoint.
-- **Loading State**: Shows animated scan-line overlay during processing.
-- **Results Display**: Card showing extracted fields (date, subject, summary, department, sender info, receiver, reference number).
-- **Styling**: Dark theme with blue accents, responsive layout centered on screen.
+### 2. App Shell (`App.tsx`)
+- Global `mcl-global-header` with MCL DAAK branding and logo (hidden during processing).
+- `CircularNavigation` footer (Camera | Queue | History) — hidden during processing.
+- Screen routing: `camera` → `processing` → `result`; `history` and `queue` via nav.
+- API base URL from `VITE_API_URL` env var, defaults to `http://localhost:8000`.
 
-### 3. Current User Flow
-1. User taps/clicks on preview area or scan button to select a document image.
-2. Image appears in the 3:4 viewfinder with corner brackets (scanner aesthetic).
-3. User clicks "Scan Document" button.
-4. Frontend fetches `POST http://localhost:8000/upload/` with file FormData.
-5. Backend processes and returns `extracted_data` JSON.
-6. Frontend renders results in a card below the scanner area.
-7. User can select another image to repeat.
+### 3. Screens (`src/screens/`)
+| Screen | File | Purpose |
+|--------|------|---------|
+| Camera | `CameraScreen.tsx` | Live camera + file upload, image review |
+| Processing | `ProcessingScreen.tsx` | Animated upload/OCR/LLM stage tracker |
+| Result | `ResultScreen.tsx` | Displays extracted data grid + raw OCR preview |
+| History | `HistoryScreen.tsx` | Paginated list of past submissions, detail modal |
+| Queue | `QueueScreen.tsx` | Placeholder for pending submissions |
 
-## End-to-End Processing Flow
+### 4. History Screen
+- Fetches `GET /history/` on mount.
+- Displays cards sorted latest-first (backend handles sorting).
+- Each card shows: timestamp, `serial_number` (if present), subject, VIEW MORE button.
+- Modal shows full `result-grid` of all extracted fields + raw OCR collapsible section.
 
-The complete document processing pipeline:
-
-1. **Frontend**: User selects and uploads a document image via the React UI.
-2. **Backend Save**: Image is saved to `uploads/<filename>`.
-3. **OpenCV Processing**: Image is preprocessed (blur, sharpen, denoise) and saved to `processed/<filename>`.
-4. **Dual OCR Strategy**:
-   - **Primary**: Mistral OCR API converts image to markdown text.
-   - **Fallback**: If Mistral fails, Paddle OCR (via PaddleX) extracts text.
-   - Error is logged for monitoring.
-5. **LLM Extraction**: Claude (Anthropic) receives OCR text and extracts structured fields (date, subject, department, etc.) as JSON.
-6. **Result Persistence**: JSON output containing original filename, file paths, OCR text, LLM result, and timestamp is saved to `output/<sanitized>_<timestamp>.json`.
-7. **Response**: Backend returns:
-   - Extracted data (LLM result).
-   - Output file path (for later retrieval or audit).
-   - Original filename.
-   - Success message.
-8. **Frontend Display**: Results card renders extracted fields with user-friendly labels.
-9. **Audit Trail**: All files (original, processed, output) are linked via filename and timestamp.
+### 5. Multi-Image Upload (Frontend → Backend)
+- `CameraScreen` captures image(s) and calls `onAccept(blob)`.
+- `App.tsx` `handleProceed()` sends `POST /upload/` with `FormData` containing `files` (single file currently; backend accepts multiple).
 
 ## Current Status
 
 ### Fully Implemented
-- **Dual OCR Pipeline**: Mistral OCR as primary with Paddle OCR fallback.
-- **Image Preprocessing**: OpenCV-based image enhancement (blur, sharpen, denoise).
-- **Structured Extraction**: Claude LLM converts OCR text to JSON fields.
-- **File Persistence**: Linked storage of uploaded, processed, and output files.
-- **React Frontend**: Full document scanning UI with image preview and results display.
-- **Logging**: Error and info logging for debugging and audit trails.
-- **CORS Support**: Configured for React dev server on localhost:5173.
-- **Environment Configuration**: Graceful client initialization for Mistral, Anthropic, Gemini APIs.
+- **Multi-image upload pipeline** — `files: list[UploadFile]`, per-image OCR, combined Claude call.
+- **Supabase persistence** — serial number generation, document row insertion.
+- **Google Sheets sync** — webhook push with serial number.
+- **History endpoint** — newest-first, supports both old and new JSON formats.
+- **History screen** — card list with detail modal, serial number display.
+- **OpenCV preprocessing** — blur, sharpen, denoise.
+- **Mistral OCR** — primary OCR engine.
+- **Claude extraction** — 8 structured fields.
+- **Local JSON output** — full result with serial number, submission ID, per-image metadata.
+- **Docker deployment** — `docker-compose.yml` for local backend.
+- **Frontend restructure** — screens in `src/screens/`, shared components in `src/components/`.
 
-### Partial / Planned Implementation
-- **Supabase Integration**: Config loaded but not used in processing flow.
-- **Google Sheets Sync**: Config available but not implemented.
-- **Google Drive Storage**: Not yet integrated.
-- **Request/Response Schemas**: Placeholder files in `schemas/` directory—no Pydantic models defined.
-- **Manual Verification Workflow**: Not yet built.
-- **Authentication & Authorization**: Not implemented.
+### Partial / Planned
+- **Supabase-backed history** — currently reads from local `output/` JSON files; needs to switch to querying Supabase directly.
+- **Deployed backend integration** — frontend `VITE_API_URL` needs to point to `https://mcl-ocr.onrender.com` for production; currently uses `localhost:8000`.
+- **Human review/edit flow** — edit extracted fields before final save.
+- **Pydantic schemas** — `schemas/` directory is empty.
+- **Multi-image failure behavior** — if one image fails OCR, behavior is undefined (currently raises HTTP 500).
+- **Authentication** — not implemented.
 
-### Known Limitations
-- Mistral API key is required for primary OCR; lack of key will cause immediate failure.
-- Paddle OCR fallback requires correct PaddleX installation (can be finicky).
-- No database persistence; results only saved to local JSON files.
-- Frontend does not yet display output file paths or allow retrieval.
-- No retry logic or queuing mechanism for failed uploads.
+### Known Issues / Tech Debt
+- `config.py` line 1: stale unused import `from anthropic.types import completion_create_params`.
+- `department` matched against hardcoded list in `claude_service.py`.
+- `pytest` is in `requirements.txt` and gets installed in the production Docker image.
+- Partial multi-image OCR failure raises a hard 500; no partial-success path exists.
+- `schemas/` directory is empty; no Pydantic request/response models.
 
 ## Technical Stack Summary
 
 | Component | Technology | Purpose |
-|-----------|-----------|---------|
+|-----------|------------|---------|
 | Backend | FastAPI + Uvicorn | REST API server |
-| Frontend | React 19 + Vite | Document scanner UI |
+| Frontend | React 19 + Vite + TypeScript | Document scanner UI |
 | Image Processing | OpenCV | Preprocessing and enhancement |
-| Primary OCR | Mistral OCR API | High-accuracy document text extraction |
-| Fallback OCR | PaddleX/PaddleOCR | Redundancy, local fallback |
-| LLM Extraction | Anthropic Claude | Structured field extraction from OCR text |
-| File Storage | Local filesystem | Uploaded, processed, and output files |
-| Logging | Python logging | Audit trail and debugging |
-| Styling | Inline CSS | Dark theme, scanner aesthetic |
+| Primary OCR | Mistral OCR API | Document text extraction |
+| LLM Extraction | Anthropic Claude | Structured field extraction |
+| Persistence | Supabase (PostgreSQL) | Serial number generation + document storage |
+| Archival | Google Sheets (Apps Script webhook) | Long-term record archive |
+| Local Cache | JSON files (`output/`) | Audit trail, history fallback |
+| Containerization | Docker + docker-compose | Local and Render deployment |
 
 ## Key Files by Purpose
 
 ### Entry Points
-- `backend/app/main.py` - FastAPI app initialization
-- `frontend/src/main.tsx` - React app initialization
+- `backend/app/main.py` — FastAPI initialization
+- `frontend/src/main.tsx` — React entry point
 
-### Core Processing
-- `backend/app/routes/upload.py` - Main request orchestration
-- `backend/app/services/mistral_ocr_services.py` - Mistral OCR (primary)
-- `backend/app/services/paddle_ocr_service.py` - Paddle OCR (fallback)
-- `backend/app/services/claude_service.py` - Structured extraction
-- `backend/app/services/opencv_services.py` - Image preprocessing
+### Core Pipeline
+- `backend/app/routes/upload.py` — multi-image upload orchestration
+- `backend/app/services/mistral_ocr_services.py` — Mistral OCR
+- `backend/app/services/claude_service.py` — structured extraction
+- `backend/app/services/opencv_services.py` — image preprocessing
+- `backend/app/services/supabase_service.py` — serial number + DB insert
+- `backend/app/services/sheets_service.py` — Google Sheets webhook
 
-### File Management
-- `backend/app/utils/file_utils.py` - File I/O and result persistence
+### History
+- `backend/app/routes/history.py` — GET /history/ endpoint
+- `frontend/src/screens/HistoryScreen.tsx` — history UI
 
 ### Configuration
-- `backend/app/config.py` - Environment and API client setup
-- `backend/requirements.txt` - Python dependencies
+- `backend/app/config.py` — environment and API client setup
+- `backend/requirements.txt` — Python dependencies
+- `frontend/.env` / `VITE_API_URL` — backend URL configuration
 
-### Frontend
-- `frontend/src/App.tsx` - Scanner UI component
-- `frontend/package.json` - Node dependencies and build config
+## Next Steps
 
-### Testing
-- `backend/tests/test_mistral_service.py` - Unit tests for Mistral integration
-
-## Next Steps & Recommendations
-
-1. **Database Integration**: Replace local JSON files with Supabase for scalable, queryable results storage.
-2. **Frontend Enhancement**:
-   - Display output file paths and allow result retrieval.
-   - Show processing status (upload → preprocessing → OCR → extraction).
-   - Add error handling and retry UI.
-3. **Request/Response Schemas**: Define Pydantic models in `schemas/` for API validation and OpenAPI docs.
-4. **Retry Logic**: Add exponential backoff and retry attempts for Mistral API failures.
-5. **Performance Optimization**:
-   - Cache OCR results to avoid reprocessing same images.
-   - Async processing for large batches.
-   - Image compression before upload.
-6. **Testing & Monitoring**:
-   - Expand test coverage (currently minimal).
-   - Add structured logging with timestamps and request IDs.
-   - Monitor API failure rates and latencies.
-7. **Deployment**:
-   - Dockerize and test full stack.
-   - Configure production API keys and rate limits.
-   - Set up CI/CD pipeline for automated testing and deployment.
-
-## Notes
-The project has evolved from a placeholder prototype into a working end-to-end OCR pipeline with dual fallback strategies. The Mistral OCR API provides high accuracy, while Paddle OCR ensures processing continues even if external API fails. The React frontend provides a polished scanner UX, and the backend meticulously tracks files from source to extracted result. The main gaps are persistent storage, comprehensive error handling, and full-featured admin/audit UI.
+1. Switch history data source from `output/` JSON files to Supabase query.
+2. Point `VITE_API_URL` to deployed backend for production.
+3. Resolve partial multi-image OCR failure behavior.
+4. Implement human review/edit step in the frontend.
+5. Add Pydantic models to `schemas/`.
+6. Remove `pytest` from production Docker image.
+7. Add office-network/IP restriction.
