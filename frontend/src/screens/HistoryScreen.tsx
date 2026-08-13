@@ -1,10 +1,46 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface HistoryItem {
   id: string;
   created_at: string;
   llm_result: Record<string, string | null>;
   ocr_text: string;
+}
+
+function ClampedText({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [clamped, setClamped] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const checkClamp = useCallback(() => {
+    if (ref.current) {
+      setClamped(ref.current.scrollHeight > ref.current.clientHeight + 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkClamp();
+  }, [text, checkClamp]);
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className={`card-subject text-clamp${expanded ? ' expanded' : ''}`}
+        style={{ marginTop: '4px' }}
+      >
+        {text}
+      </span>
+      {(clamped || expanded) && (
+        <button
+          className="read-more-btn"
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+        >
+          {expanded ? 'Read less' : 'Read more'}
+        </button>
+      )}
+    </>
+  );
 }
 
 export default function HistoryScreen() {
@@ -60,7 +96,7 @@ export default function HistoryScreen() {
       <div className="screen-head">
         <div>
           <p className="eyebrow">ARCHIVED DOCUMENTS</p>
-          <h1>SCAN HISTORY</h1>
+          <h1>LISTS</h1>
         </div>
         <span className="num subtle">{history.length} ENTRIES</span>
       </div>
@@ -87,22 +123,17 @@ export default function HistoryScreen() {
       <div className="history-grid" id="history-grid">
         {history.map((item) => (
           <article key={item.id} className="history-card">
-            <div className="card-type">{getCardType(item)}</div>
-            <div className="card-time">{formatDate(item.created_at)}</div>
-            
-            <div className="card-field">
-              <label>SUBJECT</label>
-              <span className="card-subject" style={{marginTop: '4px'}}>{item.llm_result.subject || '—'}</span>
+            <div className="card-header">
+              <span className="card-time">{formatDate(item.created_at)}</span>
             </div>
             
             <div className="card-field">
-              <label>SENDER</label>
-              <span>{item.llm_result.sender_name || '—'}</span>
+              <label>SUBJECT</label>
+              <ClampedText text={item.llm_result.subject || '—'} />
             </div>
             
             <button 
               className="btn btn-secondary" 
-              style={{marginTop: '20px', width: '100%', fontSize: '12px'}}
               onClick={() => setSelectedItem(item)}
             >
               VIEW MORE

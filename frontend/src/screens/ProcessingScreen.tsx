@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 export type ProcessingStageStatus =
   | "pending"
@@ -31,6 +31,41 @@ interface HistoryItem {
   created_at: string;
   llm_result: Record<string, string | null>;
   ocr_text: string;
+}
+
+function ClampedResultValue({ value }: { value: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [clamped, setClamped] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const checkClamp = useCallback(() => {
+    if (ref.current) {
+      setClamped(ref.current.scrollHeight > ref.current.clientHeight + 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkClamp();
+  }, [value, checkClamp]);
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className={`result-value text-clamp${expanded ? ' expanded' : ''}`}
+      >
+        {value}
+      </span>
+      {(clamped || expanded) && (
+        <button
+          className="read-more-btn"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? 'Read less' : 'Read more'}
+        </button>
+      )}
+    </>
+  );
 }
 
 export default function ProcessingScreen({ stages }: ProcessingScreenProps) {
@@ -96,18 +131,22 @@ export default function ProcessingScreen({ stages }: ProcessingScreenProps) {
         <div className="screen-head">
           <div>
             <p className="eyebrow">LATEST DOCUMENT</p>
-            <h1 style={{fontSize: '32px'}}>DASHBOARD</h1>
+            <h1 style={{fontSize: '32px'}}>QUEUE</h1>
           </div>
           <span className="status">ARCHIVED</span>
         </div>
 
         <div className="result-grid" style={{marginTop: '28px'}}>
           {Object.entries(latestDoc.llm_result).filter(([k]) => k !== 'text').map(([key, value]) => {
-            const isSubject = key === 'subject' || key === 'summary';
+            const isLongField = key === 'subject' || key === 'summary';
             return (
-              <div key={key} className={`result-field ${isSubject ? 'subject' : ''}`}>
+              <div key={key} className={`result-field ${isLongField ? 'subject' : ''}`}>
                 <span className="result-label">{key.replace('_', ' ').toUpperCase()}</span>
-                <span className="result-value">{value ?? '—'}</span>
+                {isLongField ? (
+                  <ClampedResultValue value={value ?? '—'} />
+                ) : (
+                  <span className="result-value">{value ?? '—'}</span>
+                )}
               </div>
             );
           })}

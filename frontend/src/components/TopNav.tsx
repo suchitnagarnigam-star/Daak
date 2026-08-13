@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import mclLogo from '../assets/mcl-logo.png';
 
 export default function TopNav() {
   const [isDark, setIsDark] = useState(() => {
@@ -28,11 +29,9 @@ export default function TopNav() {
       <div className="topnav-inner">
         <div className="brand" data-od-id="brand">
           <span className="brand-mark">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-              <path d="M4 21V8l8-5 8 5v13M2 21h20M8 21v-6h8v6M8 10h8" />
-            </svg>
+            <img src={mclLogo} alt="MCL Logo" width="36" height="36" style={{ objectFit: 'contain' }} />
           </span>
-          <span>MCL Patr<small>Municipal Corporation Ludhiana</small></span>
+          <span>MCL DAAK<small>Municipal Corporation Ludhiana</small></span>
         </div>
         <div className="topnav-actions" style={{ marginLeft: 'auto' }}>
           <button type="button" className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme} style={{ 

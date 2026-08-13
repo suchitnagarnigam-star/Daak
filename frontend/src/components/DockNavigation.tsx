@@ -13,10 +13,12 @@ export default function DockNavigation({ currentTab, onTabChange }: DockNavigati
       >
         <span className="dock-icon">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM9 21v-6h6v6" />
+            <path d="M3 6h18M3 12h12M3 18h18" />
+            <circle cx="20" cy="12" r="2.5" />
+            <path d="M20 9V7M20 17v-2" />
           </svg>
         </span>
-        HOME
+        QUEUE
       </button>
       
       <button 
@@ -43,10 +45,13 @@ export default function DockNavigation({ currentTab, onTabChange }: DockNavigati
       >
         <span className="dock-icon">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
           </svg>
         </span>
-        HISTORY
+        LISTS
       </button>
     </nav>
   )

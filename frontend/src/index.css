@@ -8,12 +8,12 @@
   --meta: #86868b;
   --border: #d2d2d7;
   --border-soft: #e8e8ed;
-  --accent: #0d9488;
+  --accent: #3b82f6;
   --accent-on: #ffffff;
-  --accent-hover: #0f766e;
-  --accent-active: #115e59;
+  --accent-hover: #2563eb;
+  --accent-active: #1d4ed8;
   --success: #16a34a;
-  --warn: #eab308;
+  --warn: #d97706;
   --danger: #dc2626;
   --font-display: "SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-body: "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -68,10 +68,10 @@
   --border: #374151;
   --border-soft: #4b5563;
   /* Accent colors can remain the same teal as it works well in dark mode, or slightly tweaked */
-  --accent: #14b8a6;
+  --accent: #3b82f6;
   --accent-on: #ffffff;
-  --accent-hover: #0d9488;
-  --accent-active: #0f766e;
+  --accent-hover: #2563eb;
+  --accent-active: #1d4ed8;
 }
 
 * { box-sizing: border-box; }
@@ -86,7 +86,7 @@ svg { display: block; }
 .topnav { height: 64px; flex: 0 0 64px; background: color-mix(in oklab, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 5; }
 .topnav-inner { height: 100%; max-width: var(--container-max); margin: auto; padding: 0 var(--container-gutter-desktop); display: flex; align-items: center; }
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 600; letter-spacing: -0.01em; }
-.brand-mark { width: 32px; height: 32px; border: 1px solid var(--fg); border-radius: var(--radius-sm); display: grid; place-items: center; }
+.brand-mark { width: 40px; height: 40px; display: grid; place-items: center; }
 .brand small { display: block; color: var(--muted); font: 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.2; }
 
 /* Base Layout */
@@ -144,15 +144,43 @@ svg { display: block; }
 .step.active .step-icon { border-color: var(--accent); border-top-color: transparent; animation: spin 1s linear infinite; }
 
 /* History */
-.history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.history-card { background: var(--bg); border: 1px solid var(--border); padding: 18px; }
+.history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.history-card { background: var(--bg); border: 1px solid var(--border); padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 0; border-radius: var(--radius-md); min-height: 220px; }
 .history-card:hover { border-color: var(--fg); }
-.card-type { font: 12px var(--font-mono); letter-spacing: 0.08em; color: var(--muted); }
-.card-time { font: 12px var(--font-mono); color: var(--meta); margin-top: 4px; }
-.card-subject { font-weight: 600; margin-top: 20px; }
+.card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.card-type { font: 10px var(--font-mono); letter-spacing: 0.08em; color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); padding: 5px 10px; border-radius: var(--radius-pill); white-space: nowrap; }
+.card-time { font: 10px var(--font-mono); letter-spacing: 0.04em; color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); padding: 5px 10px; border-radius: var(--radius-pill); white-space: nowrap; }
+.card-subject { font-weight: 600; font-size: 15px; line-height: 1.5; }
 .card-field { margin-top: 14px; }
-.card-field label, .result-label { display: block; font: 11px var(--font-mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-.card-field span { display: block; font-size: 14px; margin-top: 2px; }
+.card-field label, .result-label { display: block; font: 11px var(--font-mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+.card-field span { display: block; font-size: 15px; margin-top: 3px; }
+.history-card .btn { margin-top: auto; padding-top: 16px; width: 100%; font-size: 12px; min-height: 44px; }
+
+/* Read-more truncation (WhatsApp-style) */
+.text-clamp {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.text-clamp.expanded {
+  display: block !important;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.card-field .text-clamp {
+  -webkit-line-clamp: 2;
+}
+.read-more-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  padding: 3px 0 0;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
 
 /* Result */
 .result-shell { max-width: 800px; margin: auto; }
