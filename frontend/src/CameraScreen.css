@@ -476,96 +476,6 @@
    CAMERA CONTROLS
 ========================================================= */
 
-<<<<<<< Updated upstream
-.crosshair {
-  position: absolute;
-
-  top: 50%;
-  left: 50%;
-
-  width: 42px;
-  height: 42px;
-
-  transform: translate(-50%, -50%);
-
-  opacity: 0.35;
-}
-
-
-.crosshair div {
-  position: absolute;
-
-  width: 42px;
-  height: 1px;
-
-  top: 20px;
-
-  background: var(--primary);
-}
-
-
-.crosshair span {
-  position: absolute;
-
-  height: 42px;
-  width: 1px;
-
-  left: 20px;
-
-  background: var(--primary);
-}
-
-
-/* =========================
-   CAMERA READOUT
-========================= */
-
-.camera-readout {
-  position: absolute;
-
-  right: 14px;
-  bottom: 14px;
-
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-
-  color: var(--primary);
-
-  opacity: 0.7;
-
-  font-size: 10px;
-  font-weight: 600;
-
-  letter-spacing: 0.08em;
-}
-
-
-.camera-readout strong {
-  margin-top: 4px;
-
-  letter-spacing: 0.18em;
-}
-
-
-/* =========================
-   CAPTURE CONTROL
-========================= */
-<<<<<<< HEAD
-
-.camera-controls {
-  position: absolute;
-
-  left: 0;
-  right: 0;
-  bottom: 24px;
-
-  display: flex;
-  justify-content: center;
-
-=======
-=======
->>>>>>> Stashed changes
 .camera-controls {
   position: absolute;
 
@@ -586,17 +496,11 @@
   display: flex;
 
   align-items: center;
-<<<<<<< Updated upstream
-  gap: 32px;
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-  z-index: 10;
-=======
   justify-content: center;
 
   gap: 28px;
 
   pointer-events: none;
->>>>>>> Stashed changes
 }
 
 
@@ -764,17 +668,11 @@
 }
 
 
-<<<<<<< Updated upstream
-<<<<<<< HEAD
-=======
-.upload-button {
-=======
 /* =========================================================
    CAMERA CONTROL SPACER
 ========================================================= */
 
 .camera-control-spacer {
->>>>>>> Stashed changes
   width: 48px;
   height: 48px;
 
@@ -782,12 +680,7 @@
 }
 
 
-<<<<<<< Updated upstream
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-/* =========================
-=======
 /* =========================================================
->>>>>>> Stashed changes
    CAMERA ERROR
 ========================================================= */
 

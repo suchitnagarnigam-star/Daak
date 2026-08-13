@@ -4,19 +4,9 @@ opencv-python-headless
 numpy
 python-dotenv
 python-multipart
-<<<<<<< HEAD
-
-paddlex[ocr]
-paddlepaddle
-=======
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
 mistralai
 supabase
 anthropic
-<<<<<<< HEAD
 google-genai
-pytest
-=======
 httpx
 pytest
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b

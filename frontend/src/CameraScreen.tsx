@@ -12,12 +12,6 @@ import type { ChangeEvent } from "react";
 
 import mclLogo from "./assets/mcl-logo.png";
 
-<<<<<<< HEAD
-export default function CameraScreen() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-=======
 interface CameraScreenProps {
   onAccept?: (image: Blob) => void | Promise<void>;
 }
@@ -35,6 +29,7 @@ interface VideoConstraintsWithTorch
 export interface CameraScreenHandle {
   capture: () => void;
 }
+
 const CameraScreen = forwardRef<
   CameraScreenHandle,
   CameraScreenProps
@@ -47,13 +42,8 @@ const CameraScreen = forwardRef<
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-<<<<<<< Updated upstream
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-=======
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
->>>>>>> Stashed changes
 
   const [cameraError, setCameraError] = useState("");
   const [capturedImage, setCapturedImage] =
@@ -465,16 +455,6 @@ const CameraScreen = forwardRef<
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const
-     url = URL.createObjectURL(file)
-    const blob = await fetch(url).then(r => r.blob())
-    stopCamera()
-    onCapture(url, blob)
-  }
-
 
   useImperativeHandle(ref, () => ({
     capture: () => {
@@ -499,75 +479,31 @@ const CameraScreen = forwardRef<
   };
 
   const handleFileUpload = (
-  event: ChangeEvent<HTMLInputElement>
-) => {
-  const file = event.target.files?.[0];
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
 
-<<<<<<< Updated upstream
-  const acceptImage = async (): Promise<void> => {
-<<<<<<< HEAD
-    if (!capturedImage) {
+    if (!file) {
       return;
     }
 
-    /*
-      IMPORTANT:
+    if (!file.type.startsWith("image/")) {
+      setCameraError("Please select a valid image file.");
+      return;
+    }
 
-      This is where the captured image will be
-      passed to your REAL backend OCR pipeline.
+    if (capturedImage) {
+      URL.revokeObjectURL(capturedImage);
+    }
 
-      Example:
+    const previewUrl = URL.createObjectURL(file);
 
-      const blob = await fetch(capturedImage)
-        .then((response) => response.blob());
+    setCapturedBlob(file);
+    setCapturedImage(previewUrl);
+    setCameraError("");
 
-      const formData = new FormData();
-
-      formData.append(
-        "file",
-        blob,
-        "document.jpg"
-      );
-
-      await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      Do NOT add fake OCR results or fake
-      processing values.
-    */
-
-    console.log(
-      "Captured document ready for backend processing."
-    );
-=======
-    if (!capturedImage) return
-    const blob = await fetch(capturedImage).then(r => r.blob())
-    onCapture(capturedImage, blob)
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-=======
-  if (!file) {
-    return;
-  }
-
-  if (!file.type.startsWith("image/")) {
-    setCameraError("Please select a valid image file.");
-    return;
-  }
-
-  if (capturedImage) {
-    URL.revokeObjectURL(capturedImage);
-  }
-
-  const previewUrl = URL.createObjectURL(file);
-
-  setCapturedBlob(file);
-  setCapturedImage(previewUrl);
-  setCameraError("");
-
-  stopCamera();
-};
+    stopCamera();
+  };
 
   /*
    * Accept the REAL captured image.
@@ -615,7 +551,6 @@ const CameraScreen = forwardRef<
     } finally {
       setIsSubmitting(false);
     }
->>>>>>> Stashed changes
   };
 
   /*
@@ -737,113 +672,6 @@ const CameraScreen = forwardRef<
                 </button>
               </div>
             )}
-<<<<<<< Updated upstream
-
-
-            {/* DOCUMENT GUIDE */}
-
-            <div className="document-guide">
-
-              <div className="corner corner-tl" />
-              <div className="corner corner-tr" />
-              <div className="corner corner-bl" />
-              <div className="corner corner-br" />
-
-
-              {/* SCANNER LINE */}
-
-              <div className="scanner-line" />
-
-
-              {/* CENTER CROSSHAIR */}
-
-              <div className="crosshair">
-
-                <div />
-
-                <span />
-
-              </div>
-
-
-              {/* CAMERA INFORMATION */}
-
-              <div className="camera-readout">
-
-                <span>
-                  ISO: AUTO
-                </span>
-
-                <span>
-                  EXP: 0.0
-                </span>
-
-                <strong>
-                  ALIGN DOC
-                </strong>
-
-              </div>
-
-            </div>
-
-
-            {/* CAMERA CONTROL */}
-
-            <div className="camera-controls">
-
-              <button
-<<<<<<< HEAD
-=======
-                className="upload-button"
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="Upload from gallery"
-                type="button"
-              >
-                <span className="material-symbols-outlined">
-                  upload_file
-                </span>
-              </button>
-
-              <button
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-                className="capture-button"
-                onClick={captureImage}
-                aria-label="Capture document"
-                type="button"
-              >
-<<<<<<< HEAD
-
-                <div className="capture-inner">
-
-                  <span className="material-symbols-outlined">
-                    photo_camera
-                  </span>
-
-                </div>
-
-              </button>
-
-=======
-                <div className="capture-inner">
-                  <span className="material-symbols-outlined">
-                    photo_camera
-                  </span>
-                </div>
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleFileUpload}
-              />
-
->>>>>>> c728c2079154a0934e29b17955cfa132b21c3d8b
-            </div>
-
-=======
->>>>>>> Stashed changes
           </>
         ) : (
           /* ================= REVIEW ================= */
