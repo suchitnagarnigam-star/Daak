@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface HistoryItem {
   id: string;
+  serial_number?: string | null;
   created_at: string;
   llm_result: Record<string, string | null>;
   ocr_text: string;
@@ -125,6 +126,9 @@ export default function HistoryScreen() {
           <article key={item.id} className="history-card">
             <div className="card-header">
               <span className="card-time">{formatDate(item.created_at)}</span>
+              {item.serial_number && (
+                <span className="card-type">{item.serial_number}</span>
+              )}
             </div>
             
             <div className="card-field">
@@ -159,14 +163,19 @@ export default function HistoryScreen() {
           }}>
             <div style={{
               padding: '20px', borderBottom: '1px solid var(--border)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              display: 'flex', justifyContent: 'space-between', alignItems: 'start'
             }}>
-              <h2 style={{margin: 0, fontSize: '18px'}}>Document Details</h2>
+              <div>
+                <h2 style={{margin: '0 0 6px', fontSize: '18px'}}>Document Details</h2>
+                {selectedItem.serial_number && (
+                  <span className="card-type">{selectedItem.serial_number}</span>
+                )}
+              </div>
               <button 
                 onClick={() => setSelectedItem(null)}
                 style={{
                   background: 'transparent', border: 'none', color: 'var(--fg)',
-                  cursor: 'pointer', padding: '4px'
+                  cursor: 'pointer', padding: '4px', flexShrink: 0
                 }}
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

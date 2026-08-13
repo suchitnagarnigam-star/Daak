@@ -22,15 +22,19 @@ def get_history():
                 with open(filepath, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     
-                # We extract llm_result and created_at
-                # Also include filename as ID and raw ocr text
+                # Support both new format (extracted_data / combined_ocr)
+                # and old format (llm_result / ocr_text)
+                llm_result = data.get("extracted_data") or data.get("llm_result", {})
+                ocr_text = data.get("combined_ocr") or data.get("ocr_text", "No raw text available")
+
                 item = {
                     "id": filename,
+                    "serial_number": data.get("serial_number"),
                     "created_at": data.get("created_at"),
-                    "llm_result": data.get("llm_result", {}),
-                    "ocr_text": data.get("ocr_text", "No raw text available")
+                    "llm_result": llm_result,
+                    "ocr_text": ocr_text,
                 }
-                
+
                 # If llm_result is present and valid, add to history
                 if item["llm_result"]:
                     history_items.append(item)
