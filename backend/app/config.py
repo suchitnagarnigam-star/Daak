@@ -1,5 +1,7 @@
+from anthropic.types import completion_create_params
 from dotenv import load_dotenv
 import os
+from supabase import create_client, Client
 
 try:
     import anthropic
@@ -34,6 +36,7 @@ if anthropic and ANTHROPIC_API_KEY:
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==========================
 # Google Sheets & Drive
