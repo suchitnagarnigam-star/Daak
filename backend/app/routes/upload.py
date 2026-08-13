@@ -8,7 +8,7 @@ from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
 from app.services.sheets_service import push_to_sheets
 from app.utils.file_utils import save_uploaded_file, save_result_json
-
+from app.services.supabase_service import insert_data
 
 logger = logging.getLogger(__name__)
 
@@ -270,9 +270,13 @@ async def upload_images(
                 f"submission_{submission_id}"
             )
 
+        serial_number = insert_data(llm_result)
+
+
         await push_to_sheets(
             llm_result,
             sheets_filename,
+            serial_number
         )
 
         logger.info(
@@ -312,6 +316,8 @@ async def upload_images(
         output_path = save_result_json(
             result_filename,
             {
+                "serial_number": serial_number,
+
                 "submission_id": submission_id,
 
                 "file_count": len(image_items),
@@ -367,6 +373,8 @@ async def upload_images(
     # =========================================================
 
     return {
+        "serial_number": serial_number,
+
         "message": "Document processed successfully",
 
         "submission_id": submission_id,
