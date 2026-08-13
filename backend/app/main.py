@@ -20,7 +20,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://mcl-ocr.vercel.app",
-        "https://mcl-ocr.vercel.app",
+        "https://mcl-ocr-git-main-yuvrajsingh0125.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

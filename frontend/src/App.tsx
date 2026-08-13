@@ -23,6 +23,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("camera");
   const [stages, setStages] = useState<ProcessingStage[]>(INITIAL_STAGES);
   const [extractedData, setExtractedData] = useState<Record<string, string | null> | null>(null);
+  const [serialNumber, setSerialNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeNavItem, setActiveNavItem] = useState<string>("scan");
   const [cameraSessionKey, setCameraSessionKey] = useState(0);
@@ -51,7 +52,7 @@ export default function App() {
    */
   const handleNavigation = (tab: string) => {
     setActiveNavItem(tab);
-    
+
     if (tab === "home") {
       setScreen("processing");
       setActiveNavItem("home");
@@ -84,6 +85,7 @@ export default function App() {
   const handleReset = () => {
     setStages(INITIAL_STAGES);
     setExtractedData(null);
+    setSerialNumber(null);
     setError(null);
     setActiveNavItem("scan");
     setCameraSessionKey((previous) => previous + 1);
@@ -136,6 +138,7 @@ export default function App() {
       const data = await response.json();
       updateStage("llm", "complete");
 
+      setSerialNumber(data.serial_number ?? null);
       setExtractedData(data.extracted_data);
       setScreen("result");
     } catch (e) {
@@ -172,7 +175,7 @@ export default function App() {
         </div>
         <div className={`screen ${screen === "result" ? "active" : ""}`} id="result" data-od-id="result-screen">
           {extractedData && (
-            <ResultScreen data={extractedData} error={error ?? undefined} onProcessAnother={handleReset} />
+            <ResultScreen data={extractedData} serialNumber={serialNumber ?? undefined} error={error ?? undefined} onProcessAnother={handleReset} />
           )}
         </div>
       </main>

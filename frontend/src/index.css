@@ -144,8 +144,8 @@ svg { display: block; }
 .step.active .step-icon { border-color: var(--accent); border-top-color: transparent; animation: spin 1s linear infinite; }
 
 /* History */
-.history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.history-card { background: var(--bg); border: 1px solid var(--border); padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 0; border-radius: var(--radius-md); min-height: 220px; }
+.history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.history-card { background: var(--bg); border: 1px solid var(--border); padding: 24px 20px 20px; display: flex; flex-direction: column; gap: 0; border-radius: var(--radius-md); min-height: 280px; }
 .history-card:hover { border-color: var(--fg); }
 .card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
 .card-type { font: 10px var(--font-mono); letter-spacing: 0.08em; color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); padding: 5px 10px; border-radius: var(--radius-pill); white-space: nowrap; }
@@ -212,4 +212,5 @@ summary { padding: 14px 16px; cursor: pointer; font: 12px var(--font-mono); lett
   .dock-item { min-width: 72px; }
   .screen-head { align-items: start; flex-direction: column; gap: 10px; }
   .status { align-self: flex-start; }
+  .history-grid { grid-template-columns: 1fr; }
 }

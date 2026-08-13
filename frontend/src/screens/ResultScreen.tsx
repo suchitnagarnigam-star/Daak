@@ -1,5 +1,6 @@
 interface ResultScreenProps {
   data: Record<string, string | null>
+  serialNumber?: string
   error?: string
   onProcessAnother?: () => void
 }
@@ -15,11 +16,8 @@ const FIELD_LABELS: Record<string, string> = {
   reference_number: 'Ref No',
 }
 
-export default function ResultScreen({ data, error, onProcessAnother }: ResultScreenProps) {
-  // Extract text if it's there (assuming backend might pass raw text as 'text' or something similar)
+export default function ResultScreen({ data, serialNumber, error, onProcessAnother }: ResultScreenProps) {
   const rawOcr = data.text || "No raw text available";
-  
-  // Filter out text from main grid display
   const displayData = Object.entries(data).filter(([key]) => key !== 'text');
 
   return (
@@ -29,7 +27,12 @@ export default function ResultScreen({ data, error, onProcessAnother }: ResultSc
           <p className="eyebrow">DOCUMENT REVIEW</p>
           <h1>SUBMISSION RESULT</h1>
         </div>
-        <span className="status">{error ? "ERROR" : "EXTRACTED"}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+          <span className="status">{error ? "ERROR" : "EXTRACTED"}</span>
+          {serialNumber && (
+            <span className="card-type">{serialNumber}</span>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -55,12 +58,10 @@ export default function ResultScreen({ data, error, onProcessAnother }: ResultSc
         <div className="ocr-body">{rawOcr}</div>
       </details>
 
-      <div className="result-actions">
+      <div className="result-actions" style={{ justifyContent: 'center' }}>
         <button className="btn btn-primary" data-od-id="save-archive" onClick={onProcessAnother}>
           PROCESS ANOTHER
         </button>
-        <button className="btn btn-secondary" data-od-id="resync">RESYNC</button>
-        <button className="btn btn-secondary" data-od-id="report-pdf">REPORT PDF</button>
       </div>
     </div>
   )
