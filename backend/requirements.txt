@@ -6,13 +6,11 @@ numpy
 
 python-dotenv
 python-multipart
-
 mistralai
 
 supabase
 
 anthropic
 google-genai
-pytest
-
 httpx
+pytest

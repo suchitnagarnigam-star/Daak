@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import CameraScreen from "./screens/CameraScreen";
 
@@ -25,6 +25,24 @@ export default function App() {
   const [extractedData, setExtractedData] = useState<Record<string, string | null> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeNavItem, setActiveNavItem] = useState<string>("scan");
+  const [cameraSessionKey, setCameraSessionKey] = useState(0);
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setError(null);
+      setStages(INITIAL_STAGES);
+      setActiveNavItem("scan");
+      setScreen("camera");
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [error]);
 
   /*
    * =====================================================
@@ -68,6 +86,7 @@ export default function App() {
     setExtractedData(null);
     setError(null);
     setActiveNavItem("scan");
+    setCameraSessionKey((previous) => previous + 1);
     setScreen("camera");
   };
 
@@ -76,17 +95,24 @@ export default function App() {
    * DOCUMENT PROCESSING
    * =====================================================
    */
-  const handleProceed = async (blob: Blob) => {
+  const handleProceed = async (images: Blob[]) => {
+    if (!images.length) {
+      return;
+    }
+
     setStages(INITIAL_STAGES);
     setError(null);
     setScreen("processing");
     setActiveNavItem("scan");
 
     const formData = new FormData();
-    formData.append("file", blob, "document.jpg");
+    images.forEach((blob, index) => {
+      const fileName = `page-${index + 1}.jpg`;
+      formData.append("files", blob, fileName);
+    });
 
     try {
-      updateStage("upload", "processing", "Uploading image...");
+      updateStage("upload", "processing", `Uploading ${images.length} image${images.length > 1 ? "s" : ""}...`);
       await new Promise((resolve) => setTimeout(resolve, 500));
       updateStage("upload", "complete");
 
@@ -114,9 +140,8 @@ export default function App() {
       setScreen("result");
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      setError(message);
+      setError("Something went wrong. Please try again later.");
       updateStage("upload", "error", message);
-      updateStage("processing", "error");
       updateStage("ocr", "error");
       updateStage("llm", "error");
     }
@@ -132,10 +157,15 @@ export default function App() {
       <TopNav />
       <main className="viewport" id="content">
         <div className={`screen ${screen === "camera" ? "active" : ""}`} id="capture" data-od-id="capture-screen">
-          <CameraScreen onAccept={handleProceed} />
+          <CameraScreen key={cameraSessionKey} onAccept={handleProceed} />
         </div>
         <div className={`screen ${screen === "processing" ? "active" : ""}`} id="processing" data-od-id="processing-screen">
-          <ProcessingScreen stages={stages} session={{ source: "Camera", timestamp: new Date().toLocaleString() }} onAbort={handleReset} />
+          <ProcessingScreen
+            stages={stages}
+            session={{ source: "Camera", timestamp: new Date().toLocaleString() }}
+            onAbort={handleReset}
+            error={error}
+          />
         </div>
         <div className={`screen ${screen === "history" ? "active" : ""}`} id="history" data-od-id="history-screen">
           <HistoryScreen />

@@ -25,6 +25,7 @@ if genai and GEMINI_API_KEY:
 # Anthropic Claude
 # ==========================
 
+
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 anthropic_client = None
 if anthropic and ANTHROPIC_API_KEY:
@@ -33,6 +34,7 @@ if anthropic and ANTHROPIC_API_KEY:
 # ==========================
 # Supabase
 # ==========================
+
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -45,9 +47,8 @@ supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 
-
 # ==========================
 # Google Apps Script Sheets
 # ==========================
 SHEETS_WEBHOOK_URL = os.getenv("SHEETS_WEBHOOK_URL")
-SHEETS_SECRET      = os.getenv("SHEETS_SECRET")
+SHEETS_SECRET = os.getenv("SHEETS_SECRET")

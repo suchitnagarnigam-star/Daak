@@ -24,6 +24,7 @@ interface ProcessingScreenProps {
   stages: ProcessingStage[];
   session?: ProcessingSession;
   onAbort?: () => void;
+  error?: string | null;
 }
 
 interface HistoryItem {
@@ -68,7 +69,7 @@ function ClampedResultValue({ value }: { value: string }) {
   );
 }
 
-export default function ProcessingScreen({ stages }: ProcessingScreenProps) {
+export default function ProcessingScreen({ stages, error }: ProcessingScreenProps) {
   const [latestDoc, setLatestDoc] = useState<HistoryItem | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -158,6 +159,24 @@ export default function ProcessingScreen({ stages }: ProcessingScreenProps) {
   // Active Pipeline View
   return (
     <div className="processing">
+      {error && (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "rgba(255, 89, 89, 0.12)",
+            color: "#e74c3c",
+            border: "1px solid rgba(231, 76, 60, 0.35)",
+            fontSize: "14px",
+            fontWeight: 600,
+            textAlign: "center",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       <div className="processing-core">
         {isProcessing && <div className="process-ring"></div>}
         <strong id="processing-label">
