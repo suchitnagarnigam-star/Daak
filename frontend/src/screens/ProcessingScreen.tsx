@@ -29,6 +29,7 @@ interface ProcessingScreenProps {
 
 interface HistoryItem {
   id: string;
+  serial_number?: string | null;
   created_at: string;
   llm_result: Record<string, string | null>;
   ocr_text: string;
@@ -134,7 +135,12 @@ export default function ProcessingScreen({ stages, error }: ProcessingScreenProp
             <p className="eyebrow">LATEST DOCUMENT</p>
             <h1 style={{fontSize: '32px'}}>QUEUE</h1>
           </div>
-          <span className="status">ARCHIVED</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+            <span className="status">ARCHIVED</span>
+            {latestDoc.serial_number && (
+              <span className="card-type">{latestDoc.serial_number}</span>
+            )}
+          </div>
         </div>
 
         <div className="result-grid" style={{marginTop: '28px'}}>

@@ -35,3 +35,21 @@ def insert_data(llm_result):
     }).execute()    
 
     return new_serial_number
+
+
+def get_recent_documents(limit: int = 10):
+    if not supabase_client:
+        return []
+    try:
+        query = (
+            supabase_client.table("document_submission")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return query.data or []
+    except Exception as e:
+        print(f"Error fetching recent documents from Supabase: {e}")
+        return []
+

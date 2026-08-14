@@ -99,7 +99,7 @@ export default function HistoryScreen() {
           <p className="eyebrow">ARCHIVED DOCUMENTS</p>
           <h1>LISTS</h1>
         </div>
-        <span className="num subtle">{history.length} ENTRIES</span>
+        <span className="num subtle">LATEST {history.length} ENTRIES</span>
       </div>
       
       {loading && <p>Loading history...</p>}
@@ -201,11 +201,6 @@ export default function HistoryScreen() {
                   );
                 })}
               </div>
-
-              <details className="ocr" style={{marginTop: '24px'}}>
-                <summary>RAW OCR PREVIEW (MISTRAL MD)</summary>
-                <div className="ocr-body">{selectedItem.ocr_text}</div>
-              </details>
             </div>
           </div>
         </div>
