@@ -21,7 +21,7 @@ def insert_data(llm_result):
     new_serial_number = f"MCL/{current_year}/{next_serial_number}"
 
     # after the serial number we here insert the data into the database
-    supabase_client.table("document_submissions").insert({
+    supabase_client.table("document_submission").insert({
     "serial_number": new_serial_number,
     "status": "pending",
     "date" : llm_result["date"],
