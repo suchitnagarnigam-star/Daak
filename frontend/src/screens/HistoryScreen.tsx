@@ -135,6 +135,10 @@ export default function HistoryScreen() {
               <label>SUBJECT</label>
               <ClampedText text={item.llm_result.subject || '—'} />
             </div>
+            <div className="card-field">
+              <label>SENDER</label>
+              <ClampedText text={item.llm_result.sender_name || '—'} />
+            </div>
             
             <button 
               className="btn btn-secondary" 
