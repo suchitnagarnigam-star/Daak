@@ -255,6 +255,19 @@ async def upload_images(
     #
     # We push the final document result only once.
     # =========================================================
+    try:
+        serial_number = insert_data(llm_result)
+    except Exception as exc:
+        logger.exception(
+            "[%s] Failed to insert data into database: %s",
+            submission_id,
+            exc,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to insert data into database.",
+        ) from exc
 
     try:
 
@@ -270,7 +283,6 @@ async def upload_images(
                 f"submission_{submission_id}"
             )
 
-        serial_number = insert_data(llm_result)
 
 
         await push_to_sheets(
