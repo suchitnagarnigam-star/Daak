@@ -7,7 +7,7 @@ from app.services.opencv_services import process_image
 from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
 from app.services.sheets_service import push_to_sheets
-from app.utils.file_utils import save_uploaded_file, save_result_json
+from app.utils.file_utils import save_uploaded_file, save_result_json, delete_file
 from app.services.supabase_service import insert_data
 
 logger = logging.getLogger(__name__)
@@ -22,40 +22,16 @@ router = APIRouter(
 async def upload_images(
     files: list[UploadFile] = File(...)
 ):
-    """
-    Process one or multiple images as ONE document submission.
 
-    Pipeline:
-
-        Upload
-          ↓
-        OpenCV
-          ↓
-        Mistral OCR
-          ↓
-        Combine OCR from all pages
-          ↓
-        Claude / LLM
-          ↓
-        Save final result
-          ↓
-        Google Sheets
-    """
-
-    # =========================================================
     # VALIDATE UPLOAD
-    # =========================================================
-
     if not files:
         raise HTTPException(
             status_code=400,
             detail="No images were provided.",
         )
 
-    # =========================================================
-    # CREATE SUBMISSION ID
-    # =========================================================
 
+    # CREATE SUBMISSION ID
     submission_id = str(uuid4())
 
     logger.info(
@@ -79,10 +55,8 @@ async def upload_images(
 
     image_items = []
 
-    # =========================================================
+   
     # PROCESS EACH IMAGE
-    # =========================================================
-
     for index, file in enumerate(files, start=1):
 
         if not file.filename:
@@ -100,10 +74,7 @@ async def upload_images(
         )
 
         try:
-            # -------------------------------------------------
             # SAVE ORIGINAL IMAGE
-            # -------------------------------------------------
-
             saved_path = save_uploaded_file(file)
 
             logger.info(
@@ -113,10 +84,7 @@ async def upload_images(
                 saved_path,
             )
 
-            # -------------------------------------------------
             # OPENCV
-            # -------------------------------------------------
-
             processed_path = process_image(saved_path)
 
             logger.info(
@@ -125,10 +93,7 @@ async def upload_images(
                 index,
             )
 
-            # -------------------------------------------------
             # MISTRAL OCR
-            # -------------------------------------------------
-
             ocr_result = mistral_process_ocr(
                 processed_path
             )
@@ -148,21 +113,23 @@ async def upload_images(
                 index,
             )
 
-            # -------------------------------------------------
+            delete_file(saved_path)
+            delete_file(processed_path)
+            
             # STORE IMAGE ITEM
-            # -------------------------------------------------
-
             image_items.append(
                 {
                     "img_index": index,
                     "filename": file.filename,
-                    "img_path": saved_path,
-                    "processed_path": processed_path,
                     "ocr_md": ocr_text,
                 }
             )
 
         except Exception as exc:
+
+            delete_file(saved_path)
+            delete_file(processed_path)
+
             logger.exception(
                 "[%s] Failed while processing page %d: %s",
                 submission_id,
@@ -177,22 +144,6 @@ async def upload_images(
                     f"{index} ({file.filename})."
                 ),
             ) from exc
-
-    # =========================================================
-    # COMBINE OCR FROM ALL PAGES
-    #
-    # IMPORTANT:
-    #
-    # The page boundaries are explicitly preserved.
-    #
-    # This allows Claude to understand that:
-    #
-    # PAGE 1
-    # PAGE 2
-    # PAGE 3
-    #
-    # are parts of the SAME document.
-    # =========================================================
 
     page_sections = []
 
@@ -217,14 +168,6 @@ async def upload_images(
         submission_id,
         len(image_items),
     )
-
-    # =========================================================
-    # ONE CLAUDE / LLM CALL
-    #
-    # This is intentionally OUTSIDE the image loop.
-    #
-    # Claude receives the complete document.
-    # =========================================================
 
     try:
 
@@ -283,8 +226,6 @@ async def upload_images(
                 f"submission_{submission_id}"
             )
 
-
-
         await push_to_sheets(
             llm_result,
             sheets_filename,
@@ -310,99 +251,19 @@ async def upload_images(
         ) from exc
 
     # =========================================================
-    # SAVE ONE FINAL RESULT
-    #
-    # The saved JSON represents the COMPLETE document,
-    # not individual pages.
-    # =========================================================
-
-    try:
-
-        if len(files) == 1:
-            result_filename = files[0].filename
-        else:
-            result_filename = (
-                f"submission_{submission_id}"
-            )
-
-        output_path = save_result_json(
-            result_filename,
-            {
-                "serial_number": serial_number,
-
-                "submission_id": submission_id,
-
-                "file_count": len(image_items),
-
-                "status": "complete",
-
-                "created_at": (
-                    datetime.now(timezone.utc)
-                    .isoformat()
-                ),
-
-                # ---------------------------------------------
-                # Ordered image information
-                # ---------------------------------------------
-
-                "images": image_items,
-
-                # ---------------------------------------------
-                # Combined OCR
-                # ---------------------------------------------
-
-                "combined_ocr": combined_ocr,
-
-                # ---------------------------------------------
-                # ONE final LLM result
-                # ---------------------------------------------
-
-                "extracted_data": llm_result,
-            },
-        )
-
-        logger.info(
-            "[%s] Final result saved: %s",
-            submission_id,
-            output_path,
-        )
-
-    except Exception as exc:
-
-        logger.exception(
-            "[%s] Failed to save final result: %s",
-            submission_id,
-            exc,
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Document processed but final result could not be saved.",
-        ) from exc
-
-    # =========================================================
     # FINAL RESPONSE
     # =========================================================
 
     return {
         "serial_number": serial_number,
-
         "message": "Document processed successfully",
-
         "submission_id": submission_id,
-
         "status": "complete",
-
         "file_count": len(image_items),
-
         "files": [
             image["filename"]
             for image in image_items
         ],
-
         "images": image_items,
-
-        "output_path": output_path,
-
         "extracted_data": llm_result,
     }
