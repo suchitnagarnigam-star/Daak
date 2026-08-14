@@ -27,18 +27,24 @@ React 19 + Vite + TypeScript
         ↓
 FastAPI
         ↓
+Save image to disk temporarily
+        ↓
 OpenCV preprocessing
         ↓
 Mistral OCR (primary)
         ↓
-Claude (semantic extraction / classification)
+Delete both image files from disk
         ↓
-Structured JSON
+Claude (semantic extraction / classification)
         ↓
 Supabase (serial number generation + operational storage)
         ↓
 Google Sheets (long-term archive)
+        ↓
+Return JSON response — no files written to disk
 ```
+
+**The system is fully stateless on disk after each request.** No local JSON output files are written. No images persist beyond the OCR step. Supabase is the sole data store.
 
 ### Important OCR status
 
@@ -52,17 +58,18 @@ backend/app/
   config.py
   routes/
     upload.py
+    history.py
     health.py
   services/
     mistral_ocr_services.py
     claude_service.py
     opencv_services.py
     sheets_service.py
-    supabase_service.py
-    gemini_service.py        # available but not in main pipeline
+    supabase_service.py           # insert_data() + get_recent_documents()
+    gemini_service.py             # available but not in main pipeline
   utils/
-    file_utils.py
-  schemas/                   # currently empty
+    file_utils.py                 # save_uploaded_file(), delete_file(); save_result_json() (dead)
+  schemas/                        # currently empty
 
 frontend/src/
   App.tsx
@@ -70,12 +77,13 @@ frontend/src/
   main.tsx
   assets/
   components/
+    TopNav.tsx
+    DockNavigation.tsx
   screens/
     CameraScreen.tsx
     ProcessingScreen.tsx
     ResultScreen.tsx
     HistoryScreen.tsx
-    QueueScreen.tsx
 ```
 
 ## Extracted Fields
@@ -104,13 +112,13 @@ The `/upload/` endpoint accepts 1–N images as a single document submission.
 Pipeline per request:
 
 1. Generate `submission_id` (uuid4) server-side immediately when the request is received.
-2. For each uploaded image: save → OpenCV → Mistral OCR → store `ocr_md`.
-3. Concatenate all page OCR texts with explicit `===== BEGIN PAGE N =====` / `===== END PAGE N =====` markers so Claude understands multi-page context.
-4. Send combined OCR to Claude **once** — extraction is performed at document level.
-5. Call `insert_data(llm_result)` → Supabase generates and returns a `serial_number` in the format `MCL/{year}/{number}` (e.g. `MCL/2026/1001`).
-6. Push result to Google Sheets via webhook, including the `serial_number`.
-7. Save the final JSON result file locally.
-8. Return full response including `serial_number`, `extracted_data`, `submission_id`, and per-image metadata.
+2. For each uploaded image: save to `uploads/` → OpenCV → Mistral OCR → **delete both files from disk** (on success and on failure).
+3. Store only `{ img_index, filename, ocr_md }` per image — no file paths retained.
+4. Concatenate all page OCR texts with explicit `===== BEGIN PAGE N =====` / `===== END PAGE N =====` markers so Claude understands multi-page context.
+5. Send combined OCR to Claude **once** — extraction is performed at document level.
+6. Call `insert_data(llm_result)` → Supabase generates and returns a `serial_number` in the format `MCL/{year}/{number}` (e.g. `MCL/2026/1001`).
+7. Push result to Google Sheets via webhook, including the `serial_number`.
+8. Return full response including `serial_number`, `extracted_data`, `submission_id`, and per-image metadata. **No JSON file is written to disk.**
 
 ### API contract
 
@@ -127,8 +135,7 @@ Response:
   "status": "complete",
   "file_count": 1,
   "files": ["document.jpg"],
-  "images": [...],
-  "output_path": "...",
+  "images": [{"img_index": 1, "filename": "document.jpg", "ocr_md": "..."}],
   "extracted_data": { ... }
 }
 ```
@@ -139,9 +146,10 @@ If one of N images fails OCR, the project still needs an explicit decision: fail
 
 ## Storage
 
-- **Supabase/PostgreSQL:** operational storage; generates `serial_number` via `insert_data()` in `supabase_service.py`. Stores document fields + `status: pending`. Maximum 30-day retention intended.
+- **Supabase/PostgreSQL:** sole operational storage. Generates `serial_number` via `insert_data()` in `supabase_service.py`. Stores document fields + `status: pending`. History served via `get_recent_documents(limit=10)`.
 - **Google Sheets:** permanent archival record via webhook in `sheets_service.py`. Payload includes all LLM fields + `serial_number` + `filename` + `processed_at` (IST timestamp).
 - Permanent image storage in the database is prohibited.
+- **No local JSON output files.** The `output/` directory is obsolete. `save_result_json()` in `file_utils.py` is dead code.
 
 ### Serial number format
 
@@ -245,11 +253,11 @@ The Dockerfile should not upgrade pip during every build. The application depend
 
 ## Immediate Roadmap
 
-1. Verify Mistral OCR → Claude → Supabase → Sheets end-to-end flow with a real document.
+1. Clean up dead code: remove unused `save_result_json` import and function, remove stale `config.py` line 1 import.
 2. Decide partial multi-image OCR failure behavior.
-3. Implement human review/edit step in the frontend.
-4. Deploy/test the MVP on Render.
+3. Implement human review/edit step in the frontend before final Supabase save.
+4. Deploy/test the MVP on Render with the Supabase-backed history.
 5. Coordinate camera/mobile frontend work with Arshdeep.
 6. Implement real document-specific processing states.
-7. Add document browsing/filtering after persistence exists.
-8. Add office-network/IP restriction later.
+7. Add office-network/IP restriction or basic auth before commissioner demo.
+8. Remove `pytest` from production Docker image.

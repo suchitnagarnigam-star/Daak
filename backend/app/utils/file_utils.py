@@ -37,3 +37,12 @@ def save_result_json(image_filename: str, data: dict) -> str:
         json.dump(data, buffer, ensure_ascii=False, indent=2)
 
     return str(output_path)
+
+def delete_file(file_path: str) -> None:
+    """
+    Delete a file from disk after it is no longer needed.
+    """
+    try:
+        Path(file_path).unlink(missing_ok=True)
+    except Exception as e:
+        print(f"Failed to delete file {file_path}: {e}")
