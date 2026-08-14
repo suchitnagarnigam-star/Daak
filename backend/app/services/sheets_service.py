@@ -1,5 +1,6 @@
 # Import httpx for making asynchronous HTTP requests
 import httpx
+
 # Import logging module for recording application events and errors
 import logging
 # Import datetime utilities for timestamp generation with timezone support
@@ -29,7 +30,7 @@ def init_sheets(webhook_url: str, secret: str):
 # Args: llm_result (dict) - Contains extracted data from OCR processing
 #       filename (str) - Name of the file being processed
 # Returns: bool - True if successfully pushed to Sheets, False otherwise
-async def push_to_sheets(llm_result: dict, filename: str) -> bool:
+async def push_to_sheets(llm_result: dict, filename: str, serial_number: str) -> bool:
     # Check if webhook URL is configured; skip if not available
     if not SHEETS_WEBHOOK_URL:
         logger.warning("Sheets webhook URL not configured, skipping.")
@@ -41,6 +42,7 @@ async def push_to_sheets(llm_result: dict, filename: str) -> bool:
         "secret": SHEETS_SECRET,
         "data": {
             **llm_result,
+            "serial_number": serial_number,
             "filename": filename,
             "processed_at": datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S IST")
         }

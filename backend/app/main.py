@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.health import router as health_router
 from app.routes.upload import router as upload_router
+from app.routes.history import router as history_router
 from app.config import SHEETS_WEBHOOK_URL, SHEETS_SECRET
 from app.services.sheets_service import init_sheets
 import logging
@@ -19,7 +20,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://mcl-ocr.vercel.app",
-        "https://mcl-ocr.vercel.app",
+        "https://mcl-ocr-git-main-yuvrajsingh0125.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -28,3 +29,4 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(upload_router)
+app.include_router(history_router)

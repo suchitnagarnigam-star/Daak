@@ -38,7 +38,7 @@ def process_document(ocr_output: str) -> dict:
 
     prompt = f"""You are a language expert fluent in Hindi, Punjabi, and English with deep experience in translating official municipal documents.
 
-        Your job is to translate the document text below into English, preserving the original meaning and context without altering it. Then extract the following fields from the translated content.
+        Your job is to translate the document text below into English, preserving the original meaning and context without altering it and there will be conditions when there will be multiple images which will be indicated with page starting and ending lines added with the text.. Then extract the following fields from the translated content.
 
         DEPARTMENTS LIST:
         {DEPARTMENTS}
