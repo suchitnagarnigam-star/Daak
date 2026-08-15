@@ -14,12 +14,36 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const focusTimerRef = useRef<number | null>(null);
   const imagesRef = useRef<CapturedImage[]>([]);
   const [images, setImages] = useState<CapturedImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showScanHint, setShowScanHint] = useState(true);
+  const [uploadNotice, setUploadNotice] = useState("");
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowScanHint(false);
+    },3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!uploadNotice) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setUploadNotice("");
+    }, 1800);
+
+    return () => clearTimeout(timer);
+  }, [uploadNotice]);
 
   useEffect(() => {
     imagesRef.current = images;
@@ -52,6 +76,7 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
         previewUrl,
       },
     ]);
+    setUploadNotice("Image added!");
   }, []);
 
   const removeImage = useCallback((id: string) => {
@@ -70,9 +95,17 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
     async function setupCamera() {
       try {
         activeStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
         });
+
         setStream(activeStream);
+        const track = activeStream.getVideoTracks()[0];
+        cameraTrackRef.current = track ?? null;
+
         if (videoRef.current) {
           videoRef.current.srcObject = activeStream;
         }
@@ -92,23 +125,20 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
   }, []);
 
   useEffect(() => {
-    const handleCaptureEvent = () => {
-      captureFrame();
-    };
-
-    window.addEventListener("trigger-camera-capture", handleCaptureEvent);
     return () => {
-      window.removeEventListener("trigger-camera-capture", handleCaptureEvent);
+      if (focusTimerRef.current) {
+        window.clearTimeout(focusTimerRef.current);
+      }
     };
-  }, [stream]);
+  }, []);
 
   const captureFrame = useCallback(() => {
     if (videoRef.current && canvasRef.current && stream) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
+      canvas.width = video.videoWidth || 1920;
+      canvas.height = video.videoHeight || 1080;
 
       const ctx = canvas.getContext("2d");
       if (!ctx) {
@@ -121,10 +151,56 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
         if (blob) {
           addImage(blob);
           setCameraError("");
+          setFocusPoint(null);
         }
       }, "image/jpeg", 0.95);
     }
   }, [addImage, stream]);
+
+  const triggerFocus = useCallback((x: number, y: number) => {
+    if (focusTimerRef.current) {
+      window.clearTimeout(focusTimerRef.current);
+    }
+
+    setFocusPoint({ x, y });
+
+    const track = cameraTrackRef.current;
+    if (track && typeof track.applyConstraints === "function") {
+      const focusConstraints = {
+        advanced: [{
+          focusMode: "continuous",
+          exposureMode: "continuous",
+        }],
+      } as unknown as MediaTrackConstraints;
+
+      void track
+        .applyConstraints(focusConstraints)
+        .catch(() => {
+          // Some browsers do not support focus/exposure constraint tuning; the tap still shows the focus ring.
+        });
+    }
+
+    focusTimerRef.current = window.setTimeout(() => {
+      setFocusPoint(null);
+    }, 700);
+  }, []);
+
+  useEffect(() => {
+    const handleCaptureEvent = () => {
+      const rect = videoRef.current?.getBoundingClientRect();
+      const x = rect ? rect.width / 2 : 0;
+      const y = rect ? rect.height / 2 : 0;
+      triggerFocus(x, y);
+      window.setTimeout(() => {
+        captureFrame();
+      }, 200);
+    };
+
+    window.addEventListener("trigger-camera-capture", handleCaptureEvent);
+    return () => {
+      window.removeEventListener("trigger-camera-capture", handleCaptureEvent);
+    };
+  }, [captureFrame, triggerFocus]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -159,6 +235,13 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
     }
   };
 
+  const handleScannerTap = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    triggerFocus(x, y);
+  };
+
   return (
     <div className="capture-wrap">
       <div className="screen-head" style={{ position: "relative", zIndex: 10 }}>
@@ -168,7 +251,34 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
         </div>
       </div>
 
-      <div className="scanner" data-od-id="scanner" style={{ overflow: "hidden", position: "relative" }}>
+      {uploadNotice && (
+        <div
+          aria-live="polite"
+          style={{
+            margin: "0 16px 8px",
+            padding: "8px 12px",
+            borderRadius: "8px",
+            background: "#d1fae5",
+            border: "1px solid #15803d",
+            color: "#0f172a",
+            fontSize: "14px",
+            fontWeight: 700,
+            textAlign: "center",
+            zIndex: 30,
+            position: "relative",
+            boxShadow: "0 2px 8px rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          {uploadNotice}
+        </div>
+      )}
+
+      <div
+        className="scanner"
+        data-od-id="scanner"
+        onPointerDown={handleScannerTap}
+        style={{ overflow: "hidden", position: "relative", cursor: "pointer" }}
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -185,11 +295,41 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
 
         <canvas ref={canvasRef} style={{ display: "none" }} />
 
+        {focusPoint && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: `${focusPoint.x}px`,
+              top: `${focusPoint.y}px`,
+              width: "72px",
+              height: "72px",
+              border: "2px solid rgba(255, 255, 255, 0.95)",
+              borderRadius: "50%",
+              boxShadow: "0 0 0 2px rgba(0, 0, 0, 0.2), 0 0 12px rgba(255,255,255,0.6)",
+              transform: "translate(-50%, -50%)",
+              zIndex: 4,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: "18px",
+                border: "2px solid rgba(255,255,255,0.8)",
+                borderRadius: "50%",
+              }}
+            />
+          </div>
+        )}
+
         <div className="scanner-grid" style={{ zIndex: 1 }}></div>
         <i className="bracket tl" style={{ zIndex: 2 }}></i>
         <i className="bracket tr" style={{ zIndex: 2 }}></i>
         <i className="bracket bl" style={{ zIndex: 2 }}></i>
         <i className="bracket br" style={{ zIndex: 2 }}></i>
+
+        {showScanHint &&(
         <div className="scan-center" style={{ zIndex: 2, background: "color-mix(in oklab, var(--bg) 60%, transparent)", padding: "16px", borderRadius: "12px" }}>
           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
             <path d="M6 3h9l3 3v15H6zM15 3v4h4M9 12h6M9 16h6" />
@@ -197,6 +337,7 @@ export default function CameraScreen({ onAccept }: CameraScreenProps) {
           <strong>A4 DETECT</strong>
           <span>Place document inside frame</span>
         </div>
+        )}
       </div>
 
       <div className="capture-actions" style={{ position: "relative", zIndex: 10 }}>
