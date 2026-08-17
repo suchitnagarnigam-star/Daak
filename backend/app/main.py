@@ -19,7 +19,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://mcl-daak.vercel.app/",
+        "https://mcl-daak.vercel.app",
         "https://mcl-ocr-git-main-yuvrajsingh0125.vercel.app",
     ],
     allow_credentials=True,
