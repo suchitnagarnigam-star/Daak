@@ -7,7 +7,7 @@ from app.services.opencv_services import process_image
 from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
 from app.services.sheets_service import push_to_sheets
-from app.utils.file_utils import save_uploaded_file, save_result_json, delete_file
+from app.utils.file_utils import save_uploaded_file, delete_file
 from app.services.supabase_service import insert_data
 
 logger = logging.getLogger(__name__)
@@ -126,9 +126,6 @@ async def upload_images(
             )
 
         except Exception as exc:
-
-            delete_file(saved_path)
-            delete_file(processed_path)
 
             logger.exception(
                 "[%s] Failed while processing page %d: %s",

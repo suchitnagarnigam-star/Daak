@@ -131,6 +131,8 @@ Source: Supabase `document_submission` table only. Empty list if no records.
 10. Frontend `.env.production` created pointing to Render backend.
 11. CORS origins fixed (removed duplicate, added Vercel preview URL).
 12. All docs updated.
+13. Frontend: Enhanced multi-image upload UI in CameraScreen with page numbering and a 'Remove' button for each page.
+14. Frontend: Minor formatting fixes in HistoryScreen.
 
 ## Pending Technical Debt
 - `config.py` line 1: stale unused `from anthropic.types import completion_create_params` import.
