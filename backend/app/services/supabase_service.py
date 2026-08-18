@@ -29,6 +29,7 @@ def insert_data(llm_result):
     "summary" : llm_result["summary"],
     "sender_name" : llm_result["sender_name"],
     "department" : llm_result["department"],
+    "category":llm_result["category"],
     "sender_contact": llm_result["sender_contact"],
     "receiver": llm_result["receiver"],
     "reference_number": llm_result["reference_number"]

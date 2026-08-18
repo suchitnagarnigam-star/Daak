@@ -29,6 +29,19 @@ DEPARTMENTS = [
         {"department": "Workshop Branch", "description": "Services, repairs, and maintains the fleet of municipal vehicles and machinery."}
     ]
 
+CATEGORIES = [
+    {"category": "Grievance", "description": "Citizen or staff complaints requiring resolution"},
+    {"category": "Service Request", "description": "Requests for a specific municipal service (water, sanitation, lighting etc.)"},
+    {"category": "Development & Infrastructure", "description": "Roads, buildings, sewerage, construction proposals"},
+    {"category": "Financial & Budgetary", "description": "Fund allocation, expense approvals, audit matters"},
+    {"category": "Legal & Compliance", "description": "Court notices, statutory obligations, violations"},
+    {"category": "Administrative & HR", "description": "Transfers, appointments, internal staff matters"},
+    {"category": "Licensing & Permits", "description": "Trade licenses, building approvals, NOCs"},
+    {"category": "Public Health & Sanitation", "description": "Disease control, waste management, sanitation drives"},
+    {"category": "Property & Estate", "description": "Land records, encroachment, property tax matters"},
+    {"category": "General Correspondence", "description": "Anything that doesn't fit above"}
+]
+
 
 def process_document(ocr_output: str) -> dict:
 
@@ -42,6 +55,9 @@ def process_document(ocr_output: str) -> dict:
 
         DEPARTMENTS LIST:
         {DEPARTMENTS}
+        
+        CATEGORIES LIST:
+        {CATEGORIES}
 
         FIELDS TO EXTRACT:
         - date: the date the document was published or written
@@ -51,6 +67,7 @@ def process_document(ocr_output: str) -> dict:
                     Focus on the core issue, context, and what action is being requested.
                     Write as flowing prose, not numbered points or bullet points.
         - department: the MCL department this document belongs to, chosen strictly from the DEPARTMENTS LIST above
+        - category: the type of document, chosen strictly from the CATEGORIES LIST above
         - sender_name: full name of the sender
         - sender_contact: phone or email of the sender if mentioned, otherwise null
         - receiver: full name or designation of the receiver
@@ -60,6 +77,7 @@ def process_document(ocr_output: str) -> dict:
         - If a field is not found in the document after careful reading, return null for that field
         - Do not invent or guess any information
         - Department must be chosen from the provided list only. If no match found, return null
+        - Category must be chosen from the provided list only. If no match found, return null
         - Return only a valid JSON object, no explanation, no extra text, no markdown code fences
 
         DOCUMENT TEXT:
@@ -71,6 +89,7 @@ def process_document(ocr_output: str) -> dict:
             "subject": "",
             "summary": "",
             "department": "",
+            "category":"",
             "sender_name": "",
             "sender_contact": null,
             "receiver": "",
