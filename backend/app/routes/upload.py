@@ -10,6 +10,7 @@ from app.services.sheets_service import push_to_sheets
 from app.utils.file_utils import save_uploaded_file, delete_file
 from app.utils.file_utils import save_uploaded_file, delete_file
 from app.services.supabase_service import insert_data
+from app.services.supabase_service import insert_data, update_status
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,7 @@ async def upload_images(
                 detail={"message": "Failed to extract subject or summary.", "status": "failed"}
             )
 
-        if not llm_result.subject or not llm_result.summary:
+        if not llm_result.get("subject") or not llm_result.get("summary"):
             raise HTTPException(
                 status_code=422,
                 detail={"message": "Failed to extract data.", "status": "failed"}
@@ -219,6 +220,14 @@ async def upload_images(
             detail={"message": "Failed to extract structured document data.", "status": "failed"},
         ) from exc
 
+
+    # normlaize null fields to N/A "sender_contact", "receiver",
+    fields = ["date", "department", "sender_name","sender_contact", "receiver", "reference_number"]
+
+    for field in fields:
+        if not llm_result.get(field):
+            llm_result[field] = "N/A"
+
     # =========================================================
     # supabase ENTRY
     #
@@ -239,7 +248,7 @@ async def upload_images(
         ) from exc
 
 
-# sheets
+    # sheets
 
     try:
 
@@ -277,6 +286,29 @@ async def upload_images(
         raise HTTPException(
             status_code=500,
             detail="Document processed but Google Sheets sync failed.",
+        ) from exc
+
+    # =========================================================
+    # UPDATE STATUS IN DATABASE
+    # =========================================================
+    try:
+        update_status(serial_number, "complete")
+
+        logger.info(
+            "[%s] Status updated to complete",
+            submission_id,
+        )
+
+    except Exception as exc:
+        logger.exception(
+            "[%s] Failed to update status: %s",
+            submission_id,
+            exc,
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "Document processed but status update failed.", "status": "failed"},
         ) from exc
 
     # =========================================================
