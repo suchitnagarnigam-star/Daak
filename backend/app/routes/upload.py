@@ -8,6 +8,7 @@ from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
 from app.services.sheets_service import push_to_sheets
 from app.utils.file_utils import save_uploaded_file, delete_file
+from app.utils.file_utils import save_uploaded_file, delete_file
 from app.services.supabase_service import insert_data
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,9 @@ async def upload_images(
             file.filename,
         )
 
+        saved_path = None
+        processed_path = None
+
         try:
             # SAVE ORIGINAL IMAGE
             saved_path = save_uploaded_file(file)
@@ -124,8 +128,14 @@ async def upload_images(
                     "ocr_md": ocr_text,
                 }
             )
+        except HTTPException:
+            raise
 
         except Exception as exc:
+            if saved_path:
+                delete_file(saved_path)
+            if processed_path:
+                delete_file(processed_path)
 
             logger.exception(
                 "[%s] Failed while processing page %d: %s",
@@ -159,7 +169,12 @@ async def upload_images(
         )
 
     combined_ocr = "\n\n".join(page_sections)
-
+    if not combined_ocr.strip():
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "All pages returned empty OCR text.", "status": "failed"}
+        )
+        
     logger.info(
         "[%s] Combined OCR created from %d page(s)",
         submission_id,
@@ -171,11 +186,25 @@ async def upload_images(
         llm_result = process_document(
             combined_ocr
         )
+        if not llm_result:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Failed to extract subject or summary.", "status": "failed"}
+            )
+
+        if not llm_result.subject or not llm_result.summary:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Failed to extract data.", "status": "failed"}
+            )
 
         logger.info(
             "[%s] LLM extraction complete",
             submission_id,
         )
+
+    except HTTPException: 
+        raise 
 
     except Exception as exc:
 
@@ -187,11 +216,11 @@ async def upload_images(
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to extract structured document data.",
+            detail={"message": "Failed to extract structured document data.", "status": "failed"},
         ) from exc
 
     # =========================================================
-    # ONE GOOGLE SHEETS ENTRY
+    # supabase ENTRY
     #
     # We push the final document result only once.
     # =========================================================
@@ -206,8 +235,11 @@ async def upload_images(
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to insert data into database.",
+            detail={"message": "Failed to insert data into database.", "status": "failed"},
         ) from exc
+
+
+# sheets
 
     try:
 
