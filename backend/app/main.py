@@ -5,7 +5,12 @@ from app.routes.upload import router as upload_router
 from app.routes.history import router as history_router
 from app.config import SHEETS_WEBHOOK_URL, SHEETS_SECRET
 from app.services.sheets_service import init_sheets
+from contextlib import asynccontextmanager
 import logging
+import asyncio
+import httpx
+
+logger = logging.getLogger(__name__)
 
 if SHEETS_WEBHOOK_URL and SHEETS_SECRET:
     init_sheets(SHEETS_WEBHOOK_URL, SHEETS_SECRET)
@@ -13,7 +18,25 @@ if SHEETS_WEBHOOK_URL and SHEETS_SECRET:
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+
+
+async def keep_alive():
+    await asyncio.sleep(60)  # wait 1 min after startup before first ping
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get("https://mcl-ocr.onrender.com/health", timeout=10)
+                logger.info("Keep-alive ping sent")
+        except Exception as e:
+            logger.warning(f"Keep-alive ping failed: {e}")
+        await asyncio.sleep(600)  # wait 10 minutes before next ping
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(keep_alive())
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

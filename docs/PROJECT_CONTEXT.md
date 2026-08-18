@@ -107,7 +107,7 @@ Claude currently targets these eight fields, all in English, using `null` when a
 
 ## Multi-Image Upload (implemented)
 
-The `/upload/` endpoint accepts 1–N images as a single document submission.
+The `/upload/` endpoint accepts 1–N images as a single document submission. The frontend `CameraScreen` supports capturing/uploading multiple pages, previewing them, and removing individual pages before submission.
 
 Pipeline per request:
 
