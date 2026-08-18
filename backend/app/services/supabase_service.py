@@ -53,4 +53,7 @@ def get_recent_documents(limit: int = 10):
     except Exception as e:
         print(f"Error fetching recent documents from Supabase: {e}")
         return []
+    
+def update_status(serial_number: str, status: str):
+    supabase_client.table("document_submission").update({"status": status}).eq("serial_number", serial_number).execute()
 
