@@ -1,13 +1,13 @@
-# MCL Patr — Context Handoff (August 14, 2026)
+# MCL Patr — Context Handoff (August 17, 2026)
 
 ## What is this?
 MCL Patr is a document digitization system for Municipal Corporation Ludhiana (MCL). Extracts and structures text from multilingual municipal correspondence (English, Hindi, Punjabi/Gurmukhi).
 
-Yuvraj is learning-by-doing — wants explanation of what/why during coding, not handed solutions. Wants directness, no hedging, first-principles reasoning. Minimal unsolicited recommendations.
+Yuvraj is learning-by-doing — explain what/why during coding, never hand solutions unless asked. Direct, no hedging, first-principles reasoning. Minimal unsolicited recommendations. If wrong, say so plainly.
 
 ## Repository
 - https://github.com/yuvrajsingh0125/MCL-OCR.git (public)
-- `main` — merged, deployed
+- `main` — merged, deployed, latest code lives here
 - `uv-dev` — Yuvraj: backend, LLM, routing, UI, persistence
 - `frontend` — Arshdeep (AD): OpenCV preprocessing, OCR engine layer, frontend camera, screens
 - Arshdeep's files are off-limits during refactors; changes to shared interfaces need coordination
@@ -66,7 +66,6 @@ backend/app/
 
 frontend/src/
   App.tsx                         # Global TopNav header, DockNavigation footer, screen routing
-                                  # Stores serial_number in state, passes to ResultScreen
   index.css                       # Design system tokens and global styles
   main.tsx
   components/
@@ -75,7 +74,6 @@ frontend/src/
   screens/
     CameraScreen.tsx              # Live camera + file upload + image review
     ProcessingScreen.tsx          # Upload/OCR/LLM animated stage tracker
-                                  # Idle state: shows latest doc from /history/
     ResultScreen.tsx              # Extracted data grid + serial_number badge + raw OCR
     HistoryScreen.tsx             # Past submissions list (top 10) + detail modal (no OCR)
 ```
@@ -107,47 +105,67 @@ Response: {
   file_count, files[], images[{img_index, filename, ocr_md}], extracted_data
 }
 ```
-Images are deleted from disk before the response is sent. `images[]` contains only `img_index`, `filename`, `ocr_md` — no file paths.
+Images are deleted from disk before response. `images[]` contains only `img_index`, `filename`, `ocr_md` — no file paths.
 
 ### GET /history/
 ```
 Response: [
   { id, serial_number, created_at, llm_result, ocr_text: "No raw text available" },
-  ...  // top 10, sorted newest-first by Supabase
+  ...  // top 10, sorted newest-first
 ]
 ```
-Source: Supabase `document_submission` table only. Empty list if no records.
+Source: Supabase only. Empty list if no records.
 
-## What Was Done This Session
-1. Yuvraj added `delete_file()` to `file_utils.py`.
-2. Yuvraj updated `upload.py` to delete images immediately after OCR (both success and error paths).
-3. Yuvraj removed `img_path` and `processed_path` from `image_items` — those paths no longer exist by the time the response is built.
-4. Yuvraj removed the local JSON output save block (`save_result_json`) from `upload.py` entirely.
-5. Removed local JSON file fallback from `history.py` — Supabase is sole source of truth.
-6. Added `get_recent_documents(limit=10)` to `supabase_service.py`.
-7. History screen: removed RAW OCR modal section (not stored in Supabase), changed label to `LATEST N ENTRIES`.
-8. ProcessingScreen/Queue: added `serial_number` to `HistoryItem` interface and badge display.
-9. ResultScreen: shows `serial_number` badge; dead RESYNC/REPORT PDF buttons removed.
-10. Frontend `.env.production` created pointing to Render backend.
-11. CORS origins fixed (removed duplicate, added Vercel preview URL).
-12. All docs updated.
-13. Frontend: Enhanced multi-image upload UI in CameraScreen with page numbering and a 'Remove' button for each page.
-14. Frontend: Minor formatting fixes in HistoryScreen.
+## What Was Discussed This Session (August 17)
+
+### Concurrency
+- Yuvraj's original concern was data mixing between concurrent requests — confirmed this is NOT a real risk. Local variables are isolated per function call stack. Each request has its own `image_items`, `llm_result`, `serial_number` etc.
+- Real problem identified: **blocking**. The async route (`upload_images`) calls synchronous service functions (Mistral, Claude, Supabase). This blocks the event loop. While Request A waits for Mistral, Request B cannot start.
+- `push_to_sheets` is the only service that is already properly async.
+- Clarified: this is blocking, NOT deadlock. Deadlock = two tasks waiting on each other forever. Blocking = one task holds the thread while waiting for I/O.
+
+### Two types of work in the pipeline
+- **I/O-bound** (waiting for network): Mistral OCR, Claude, Supabase, Google Sheets → fix with `async/await`
+- **CPU-bound** (actual computation): OpenCV preprocessing → fix with `run_in_executor` (thread pool)
+
+### Planned concurrency improvements (not yet implemented)
+1. Make Mistral, Claude, Supabase calls truly async using async-compatible clients
+2. Offload OpenCV to thread pool via `asyncio.run_in_executor`
+3. Parallelise multi-image OCR within a single request (currently sequential)
+4. Wrap clients in classes for shared resource management across requests
+
+### Internal keep-alive cron job
+- Decision: replace UptimeRobot dependency with an internal background task
+- Approach: asyncio infinite loop with `await asyncio.sleep()` started at app startup via FastAPI lifespan event
+- Lives in `main.py`
+- Not yet implemented — next step is to see `main.py` contents
+
+### Exception block bug in upload.py (unresolved)
+- `delete_file(saved_path)` and `delete_file(processed_path)` were removed from the except block
+- Bug still exists: if exception occurs before `saved_path` or `processed_path` are assigned, referencing them in the except block crashes
+- Fix: initialise both variables to `None` before the try block, guard deletion with `if saved_path` / `if processed_path`
+- Not yet implemented
 
 ## Pending Technical Debt
-- `config.py` line 1: stale unused `from anthropic.types import completion_create_params` import.
-- `save_result_json()` still exists in `file_utils.py` but is no longer called — dead code.
-- `save_result_json` still imported in `upload.py` — unused import.
-- `department` hardcoded list of 22 MCL departments in `claude_service.py`.
-- `pytest` in production `requirements.txt` / Docker image.
-- `schemas/` directory is empty; no Pydantic validation models.
-- Partial multi-image OCR failure raises hard 500; no partial-success path exists.
+- `config.py` line 1: stale unused `from anthropic.types import completion_create_params` import
+- `save_result_json()` still exists in `file_utils.py` — dead code, never called
+- `save_result_json` import removed from `upload.py` (done this session)
+- `department` hardcoded list of 22 MCL departments in `claude_service.py`
+- `pytest` in production `requirements.txt` / Docker image
+- `schemas/` directory is empty — no Pydantic validation models
+- Partial multi-image OCR failure raises hard 500; no partial-success path
+- No file type or file size validation on upload
 
-## Known Bug Patterns in This Codebase (for review passes)
-Missing imports, defined-but-uncalled functions, hardcoded paths ignoring parameters, stale config variables, trailing commas creating unintended tuples, try/except blocks misplaced inside dict literals, `json.dumps()` on already-string output, unused imports left after refactors.
+## Priority Order Agreed
+1. Fix exception block bug in `upload.py` (safe file cleanup)
+2. Internal keep-alive cron job in `main.py`
+3. Make services async (concurrency)
+4. Input validation (file type, size)
+5. Dead code cleanup
 
 ## Communication Preferences (Yuvraj)
-- Learning-by-doing — explain what/why during code
+- Learning-by-doing — explain what/why, never hand solutions unless explicitly asked
 - Direct — say when something is wrong, no hedging
 - Minimal unsolicited recommendations
+- Only give code when asked
 - Under deadline pressure, will ask for more directive output — follow that shift when stated
