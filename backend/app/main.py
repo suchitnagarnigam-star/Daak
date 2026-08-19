@@ -6,11 +6,18 @@ from app.routes.history import router as history_router
 from app.config import SHEETS_WEBHOOK_URL, SHEETS_SECRET
 from app.services.sheets_service import init_sheets
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 import logging
 import asyncio
 import httpx
+import os
 
 logger = logging.getLogger(__name__)
+load_dotenv()
+
+KEEP_ALIVE_URL = os.getenv("KEEP_ALIVE_URL", "https://mcl-daak.onrender.com/health")
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+CORS_ORIGINS = [origin.strip() for origin in _cors_origins.split(",") if origin.strip()]
 
 if SHEETS_WEBHOOK_URL and SHEETS_SECRET:
     init_sheets(SHEETS_WEBHOOK_URL, SHEETS_SECRET)
@@ -25,7 +32,7 @@ async def keep_alive():
     while True:
         try:
             async with httpx.AsyncClient() as client:
-                await client.get("https://mcl-daak.onrender.com/health", timeout=10)
+                await client.get(KEEP_ALIVE_URL, timeout=10)
                 logger.info("Keep-alive ping sent")
         except Exception as e:
             logger.warning(f"Keep-alive ping failed: {e}")
@@ -40,11 +47,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://mcl-daak.vercel.app",
-        "https://mcl-daak-git-duv-dev-shiv99.vercel.app/",
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

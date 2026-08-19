@@ -9,6 +9,7 @@ const FIELD_LABELS: Record<string, string> = {
   date: 'Date',
   subject: 'Subject',
   summary: 'Summary',
+  category: 'Category',
   department: 'Department',
   sender_name: 'Sender',
   sender_contact: 'Contact',
