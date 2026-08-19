@@ -25,7 +25,7 @@ async def keep_alive():
     while True:
         try:
             async with httpx.AsyncClient() as client:
-                await client.get("https://mcl-ocr.onrender.com/health", timeout=10)
+                await client.get("https://mcl-daak.onrender.com/health", timeout=10)
                 logger.info("Keep-alive ping sent")
         except Exception as e:
             logger.warning(f"Keep-alive ping failed: {e}")
