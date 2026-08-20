@@ -8,8 +8,6 @@ from app.services.mistral_ocr_services import mistral_process_ocr
 from app.services.claude_service import process_document
 from app.services.sheets_service import push_to_sheets
 from app.utils.file_utils import save_uploaded_file, delete_file
-from app.utils.file_utils import save_uploaded_file, delete_file
-from app.services.supabase_service import insert_data
 from app.services.supabase_service import insert_data, update_status
 
 logger = logging.getLogger(__name__)

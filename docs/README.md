@@ -1,107 +1,61 @@
-<div align="center">
-
 # MCL Patr
 
-### Municipal Corporation Ludhiana — Document Digitization System
+MCL Patr is the Municipal Corporation Ludhiana document digitization system. It takes municipal correspondence, runs it through OpenCV preprocessing, Mistral OCR, Claude extraction, Supabase persistence, and Google Sheets sync, then returns structured data to the frontend.
 
-Captures physical government correspondence, extracts text via OCR, and structures it into searchable fields using an LLM.
-Multilingual support: **English · Hindi · Punjabi (Gurmukhi)**
+## Current state
 
-[![Frontend](https://img.shields.io/badge/frontend-live-brightgreen)](https://mcl-ocr.vercel.app)
-[![Backend](https://img.shields.io/badge/backend-Render-blue)](https://mcl-ocr.onrender.com)
-[![Stack](https://img.shields.io/badge/stack-FastAPI%20%7C%20React%20%7C%20Claude-orange)]()
+- Current working branch: `uv-dev`
+- Dev remote: `origin` → `yuvrajsingh0125/MCL-OCR`
+- Production remote: `daak` → `suchitnagarnigam-star/mcl-daak`
+- Active OCR path: Mistral OCR only
+- Active storage path: Supabase + Google Sheets
+- The system is stateless on disk after OCR
 
-</div>
+## Live deployments
 
----
-
-## Live Deployments
-
-| Service  | URL                                                              |
-| -------- | ---------------------------------------------------------------- |
-| Frontend | [mcl-ocr.vercel.app](https://mcl-ocr.vercel.app)               |
-| Backend  | [mcl-ocr.onrender.com](https://mcl-ocr.onrender.com)           |
-
-> **Note:** Backend runs on Render free tier — expect a ~50s cold start after inactivity.
-
----
+- Frontend dev: https://mcl-ocr.vercel.app
+- Backend dev: https://mcl-ocr.onrender.com
+- Frontend prod: https://mcl-daak.vercel.app
+- Backend prod: https://mcl-daak.onrender.com
 
 ## Stack
 
-| Layer            | Technology                  | Purpose                                        |
-| ---------------- | --------------------------- | ---------------------------------------------- |
-| Frontend         | React 19 + Vite + TypeScript | Document scanner UI                            |
-| Backend          | FastAPI + Uvicorn           | REST API, pipeline orchestration               |
-| Image Processing | OpenCV                      | Preprocessing — blur, sharpen, denoise         |
-| Primary OCR      | Mistral OCR (`mistral-ocr-latest`) | Text extraction, multilingual         |
-| Fallback OCR     | PaddleOCR (PaddleX)         | Local fallback if Mistral fails                |
-| LLM Extraction   | Anthropic Claude (`claude-sonnet-4-6`) | Structured field extraction from OCR text |
-| Sheets Sync      | Google Apps Script webhook  | Appends extracted data to monthly Google Sheet |
-| Database         | Supabase (PostgreSQL)       | Planned — 30-day TTL storage                   |
-| Deployment       | Render (backend), Vercel (frontend) | Cloud hosting                          |
-
----
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| Frontend | React 19 + Vite + TypeScript | Scanner UI |
+| Backend | FastAPI + Uvicorn | API and pipeline orchestration |
+| Image processing | OpenCV | Preprocessing |
+| OCR | Mistral OCR | Text extraction |
+| Extraction | Anthropic Claude | Structured fields |
+| Persistence | Supabase | Serial numbers and document storage |
+| Archival | Google Sheets webhook | Long-term record archive |
+| Deployment | Render + Vercel | Hosting |
 
 ## Pipeline
 
-```mermaid
-flowchart TD
-    A([User uploads image]) --> B[POST /upload/]
-    B --> C[Save file → uploads/]
-    C --> D[OpenCV preprocessing → processed/]
-    D --> E{Mistral OCR}
-    E -->|success| G[OCR markdown text]
-    E -->|failure| F[PaddleOCR fallback]
-    F --> G
-    G --> H[Claude: extract 8 fields]
-    H --> I[Save result JSON → output/]
-    I --> J[Google Sheets sync via webhook]
-    J --> K([Return extracted_data to frontend])
-
-    style A fill:#2d333b,stroke:#8b949e,color:#fff
-    style K fill:#2d333b,stroke:#8b949e,color:#fff
-    style E fill:#1f6feb,stroke:#58a6ff,color:#fff
-    style H fill:#8957e5,stroke:#bc8cff,color:#fff
-    style F fill:#3d2a1f,stroke:#f0883e,color:#fff
+```text
+Upload images
+    ↓
+Save temporarily to disk
+    ↓
+OpenCV preprocessing
+    ↓
+Mistral OCR per image
+    ↓
+Delete temp files immediately
+    ↓
+Combine OCR text in memory
+    ↓
+Claude extraction
+    ↓
+Supabase insert + serial number
+    ↓
+Google Sheets webhook sync
+    ↓
+Return structured response
 ```
 
-**Request lifecycle, sequence view:**
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend (React)
-    participant B as Backend (FastAPI)
-    participant CV as OpenCV
-    participant M as Mistral OCR
-    participant P as PaddleOCR
-    participant C as Claude
-    participant S as Google Sheets
-
-    U->>F: Select/capture image
-    F->>B: POST /upload/ (multipart)
-    B->>B: Save to uploads/
-    B->>CV: process_image()
-    CV-->>B: processed image path
-    B->>M: OCR request
-    alt Mistral succeeds
-        M-->>B: markdown text
-    else Mistral fails
-        B->>P: fallback OCR
-        P-->>B: extracted text
-    end
-    B->>C: process_document(ocr_text)
-    C-->>B: 8 structured fields (JSON)
-    B->>S: sync row (async)
-    B-->>F: extracted_data JSON
-    F-->>U: Render ResultScreen
-```
-
----
-
-## Extracted Fields
-
-All fields extracted in English. Null when not found in document.
+## Extracted fields
 
 ```json
 {
@@ -109,6 +63,7 @@ All fields extracted in English. Null when not found in document.
   "subject": "",
   "summary": "",
   "department": "",
+  "category": "",
   "sender_name": "",
   "sender_contact": null,
   "receiver": "",
@@ -116,180 +71,53 @@ All fields extracted in English. Null when not found in document.
 }
 ```
 
-`department` is matched against a hardcoded list of 22 MCL departments.
+`subject` and `summary` are required. `category` is now part of the stored and displayed result.
 
----
+## Repository layout
 
-## Repository Structure
-
-```
+```text
 MCL-OCR/
 ├── backend/
-│   ├── app/
-│   │   ├── main.py                     # FastAPI init, CORS, router registration
-│   │   ├── config.py                   # API client init (Anthropic, Mistral, Supabase)
-│   │   ├── routes/
-│   │   │   ├── upload.py               # POST /upload/ — full pipeline
-│   │   │   └── health.py               # GET /health
-│   │   ├── services/
-│   │   │   ├── mistral_ocr_services.py # Primary OCR — Mistral API
-│   │   │   ├── paddle_ocr_service.py   # Fallback OCR — PaddleX
-│   │   │   ├── claude_service.py       # LLM structured extraction
-│   │   │   ├── opencv_services.py      # Image preprocessing
-│   │   │   └── sheets_service.py       # Google Sheets sync
-│   │   ├── utils/
-│   │   │   └── file_utils.py           # File save, result JSON persistence
-│   │   └── schemas/                    # Pydantic models (planned)
-│   ├── tests/
-│   │   └── test_mistral_service.py
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── docker-compose.yml
+│   └── app/
+│       ├── main.py
+│       ├── config.py
+│       ├── routes/
+│       ├── services/
+│       ├── utils/
+│       └── schemas/
 ├── frontend/
 │   └── src/
-│       ├── App.tsx                     # Screen state, API call, flow wiring
-│       ├── CameraScreen.tsx            # Camera capture + file upload
-│       ├── ReviewScreen.tsx            # Image review before processing
-│       ├── ProcessingScreen.tsx        # Pipeline animation with stage states
-│       └── ResultScreen.tsx            # 8-field extraction display
+│       ├── App.tsx
+│       ├── components/
+│       └── screens/
 └── docs/
-    └── CODEBASE_REPORT.md
+    ├── context_handoff.md
+    ├── PROJECT_CONTEXT.md
+    ├── CODEBASE_REPORT.md
+    ├── DESIGN.md
+    └── mcl_ui_prompt.md
 ```
-
----
-
-## Local Development
-
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+
-- Docker (optional)
-
-### Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-
-# Set environment variables
-export ANTHROPIC_API_KEY=your_key
-export MISTRAL_API_KEY=your_key
-export GOOGLE_SHEETS_WEBHOOK_URL=your_url
-
-uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend runs on `http://localhost:5173` and expects backend at `http://localhost:8000`.
-
-### Docker
-
-```bash
-cd backend
-docker-compose up --build
-```
-
----
-
-## Environment Variables
-
-| Variable                   | Required | Purpose                          |
-| -------------------------- | -------- | -------------------------------- |
-| `ANTHROPIC_API_KEY`        | Yes      | Claude LLM extraction            |
-| `MISTRAL_API_KEY`          | Yes      | Primary OCR                      |
-| `GOOGLE_SHEETS_WEBHOOK_URL`| Yes      | Sheets sync via Apps Script      |
-| `SUPABASE_URL`             | No       | Planned DB integration           |
-| `SUPABASE_KEY`             | No       | Planned DB integration           |
-
----
-
-## Google Sheets Structure
-
-- Organized by month — August sheet, September sheet, etc.
-- Apps Script creates the month sheet if it doesn't exist.
-- Columns: all 8 extracted fields + original filename + `processed_at` (IST timestamp).
-
----
-
-## Hard Constraints
-
-These will not change for this project:
-
-- No authentication or RBAC
-- No agents or streaming
-- No permanent image storage in database
-- No centralized MCL platform
-
----
 
 ## Branches
 
-| Branch   | Owner      | Scope                                      |
-| -------- | ---------- | ------------------------------------------ |
-| `main`   | Both       | Merged, deployed                           |
-| `uv-dev` | Yuvraj     | Backend, LLM, pipeline wiring, routing, UI |
-| `AD-dev` | Arshdeep   | Frontend camera, OpenCV preprocessing      |
+| Branch | Owner | Scope |
+| --- | --- | --- |
+| `main` | Both | Merged/deployed line |
+| `uv-dev` | Yuvraj | Backend, LLM, routing, persistence, UI wiring |
+| `frontend` | Arshdeep | Frontend camera and preprocessing work |
 
----
+## What's working
 
-## What's Working
+- Multi-image upload pipeline
+- Mistral OCR as the active OCR engine
+- Claude extraction with 9 fields
+- Supabase-backed history
+- Google Sheets sync
+- Result screen showing serial number and extracted data
 
-- Mistral OCR handles English, Hindi, and Punjabi/Gurmukhi correctly
-- Claude extracts all 8 fields accurately from OCR text
-- PaddleOCR fallback activates if Mistral fails
-- Google Sheets updated per document with IST timestamp
-- Full frontend flow: camera/upload → review → processing animation → result
-- Deployed and tested on mobile
+## Next steps
 
----
-
-## Pending / Next Steps
-
-1. **Multi-image support** — 1–3 images per submission, combined OCR fed to Claude
-2. **Supabase integration** — persistent storage with 30-day TTL
-3. **Document submission object** — `vid` (uuid4), `status`, `images_list` with per-image OCR
-4. **Human review flow** — edit extracted fields before saving
-5. **Pydantic schemas** — request/response validation in `schemas/`
-6. **Document view page** — browse and filter past documents
-7. **Render upgrade** — move to Starter ($7/month) before commissioner demo to eliminate cold start
-8. **Office network restriction** — firewall to MCL IP range only
-
-### Planned: Multi-Image Flow
-
-```mermaid
-flowchart TD
-    A([Request received]) --> B[Generate vid = uuid4]
-    B --> C["Create DocumentSubmission\nvid, status=pending, images_list=[], 8 fields=null"]
-    C --> D{For each uploaded file}
-    D --> E[Save file → img_path]
-    E --> F["ImageItem: img_path, img_index, ocr_md=None"]
-    F --> G[Append to images_list]
-    G --> D
-    D -->|done| H[status = processing]
-    H --> I{For each ImageItem}
-    I --> J[OpenCV preprocess]
-    J --> K[Mistral OCR → ocr_md]
-    K --> I
-    I -->|done| L[Concatenate all ocr_md]
-    L --> M[Claude: extract 8 fields from combined text]
-    M --> N[Populate fields on DocumentSubmission]
-    N --> O[status = complete]
-    O --> P[Save to Supabase]
-    P --> Q[Sync to Google Sheets]
-    Q --> R([Return DocumentSubmission])
-
-    style A fill:#2d333b,stroke:#8b949e,color:#fff
-    style R fill:#2d333b,stroke:#8b949e,color:#fff
-    style M fill:#8957e5,stroke:#bc8cff,color:#fff
-    style P fill:#1f6feb,stroke:#58a6ff,color:#fff
-```
-
-See [`DESIGN.md`](./DESIGN.md) for the reasoning behind this structure.
+1. Add upload validation.
+2. Decide how partial OCR failures should behave.
+3. Add Pydantic schemas.
+4. Remove stale dead code and imports.

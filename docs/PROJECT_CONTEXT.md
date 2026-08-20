@@ -1,56 +1,61 @@
 # MCL Patr — Project Context Handoff
 
-**Last updated:** August 14, 2026
+**Last updated:** August 19, 2026
 
 ## Purpose
 
-MCL Patr is a document digitization system for Municipal Corporation Ludhiana (MCL). It extracts and structures multilingual municipal correspondence in English, Hindi, and Punjabi/Gurmukhi. Yuvraj is learning by doing and prefers direct explanations of what and why during coding, minimal unsolicited recommendations, and no unnecessary hedging.
+MCL Patr is a municipal document digitization system for Municipal Corporation Ludhiana. It extracts structured data from multilingual correspondence, stores the result in Supabase, and syncs it to Google Sheets.
 
-## Repository / Git Workflow
+Yuvraj prefers direct explanations of what changed and why, minimal unsolicited recommendations, and no unnecessary hedging.
+
+## Repository / git workflow
 
 - Repository: `yuvrajsingh0125/MCL-OCR`
-- `main`: merged/deployed branch.
-- `uv-dev`: Yuvraj's branch for backend, LLM, routing, UI, and persistence.
-- `frontend`: Arshdeep's branch for OpenCV preprocessing, OCR engine layer, and frontend camera work.
-- Arshdeep-owned files are off-limits during refactors. Shared interface changes must be coordinated.
-- Arshdeep syncs from Yuvraj's branch before her PR with `git fetch origin` and `git checkout origin/uv-dev -- .`.
+- Remote `origin`: dev/testing repo
+- Remote `daak`: production counterpart at `suchitnagarnigam-star/mcl-daak`
+- Current local branch: `uv-dev`
+- `uv-dev` is the active branch for backend, LLM, routing, UI, and persistence changes
+- `frontend` remains the branch for OpenCV preprocessing and camera-focused frontend work
+- `daak/main` and `daak/duv-dev` are aligned to the current `uv-dev` commit
 
-## Live Deployments
+## Live deployments
 
-- Frontend: `https://mcl-ocr.vercel.app` — Vercel, auto-deploy from `main`.
-- Backend: `https://mcl-ocr.onrender.com` — Render free tier; approximately 50-second cold starts. Upgrade to Starter ($7/month) is recommended before the commissioner demo.
+- Frontend dev: `https://mcl-ocr.vercel.app`
+- Backend dev: `https://mcl-ocr.onrender.com`
+- Frontend prod: `https://mcl-daak.vercel.app`
+- Backend prod: `https://mcl-daak.onrender.com`
 
-## Current Architecture
+## Current architecture
 
 ```text
 React 19 + Vite + TypeScript
         ↓
 FastAPI
         ↓
-Save image to disk temporarily
+Temporary save to uploads/
         ↓
 OpenCV preprocessing
         ↓
 Mistral OCR (primary)
         ↓
-Delete both image files from disk
+Delete temp files from disk
         ↓
-Claude (semantic extraction / classification)
+Claude extraction on combined OCR text
         ↓
-Supabase (serial number generation + operational storage)
+Supabase serial number generation + storage
         ↓
-Google Sheets (long-term archive)
+Google Sheets webhook sync
         ↓
-Return JSON response — no files written to disk
+Return JSON response
 ```
 
-**The system is fully stateless on disk after each request.** No local JSON output files are written. No images persist beyond the OCR step. Supabase is the sole data store.
+**The system is stateless on disk after each request.** No output JSON is written and no uploaded images persist beyond OCR. Supabase is the source of truth.
 
-### Important OCR status
+## Important OCR status
 
-The current project context has standardized on **Mistral OCR as the primary OCR engine**. PaddleOCR is no longer part of the deployment target because of its memory/image-size cost. Any older repository documentation that still describes PaddleOCR as an active fallback is stale and must not be treated as the current plan.
+The current plan uses **Mistral OCR as the primary OCR engine**. PaddleOCR is no longer part of the deployment target. Any stale doc describing PaddleOCR as an active fallback should be treated as outdated.
 
-## Current Repository Structure
+## Current repository structure
 
 ```text
 backend/app/
@@ -65,17 +70,16 @@ backend/app/
     claude_service.py
     opencv_services.py
     sheets_service.py
-    supabase_service.py           # insert_data() + get_recent_documents()
-    gemini_service.py             # available but not in main pipeline
+    supabase_service.py
+    gemini_service.py
   utils/
-    file_utils.py                 # save_uploaded_file(), delete_file(); save_result_json() (dead)
-  schemas/                        # currently empty
+    file_utils.py
+  schemas/
 
 frontend/src/
   App.tsx
   index.css
   main.tsx
-  assets/
   components/
     TopNav.tsx
     DockNavigation.tsx
@@ -86,9 +90,9 @@ frontend/src/
     HistoryScreen.tsx
 ```
 
-## Extracted Fields
+## Extracted fields
 
-Claude currently targets these eight fields, all in English, using `null` when a value is not found:
+Claude now targets 9 fields. `subject` and `summary` are required gate fields.
 
 ```json
 {
@@ -96,6 +100,7 @@ Claude currently targets these eight fields, all in English, using `null` when a
   "subject": "",
   "summary": "",
   "department": "",
+  "category": "",
   "sender_name": "",
   "sender_contact": null,
   "receiver": "",
@@ -103,161 +108,101 @@ Claude currently targets these eight fields, all in English, using `null` when a
 }
 ```
 
-`department` is matched against a hardcoded list of 22 MCL departments in `claude_service.py`; this is known technical debt.
+- `department` is matched against a hardcoded list of 22 MCL departments
+- `category` is matched against a hardcoded list of 10 categories
+- `category` must be preserved through history and result rendering
 
-## Multi-Image Upload (implemented)
+## Multi-image upload
 
-The `/upload/` endpoint accepts 1–N images as a single document submission. The frontend `CameraScreen` supports capturing/uploading multiple pages, previewing them, and removing individual pages before submission.
+The `/upload/` endpoint accepts 1 to N images as one submission.
 
 Pipeline per request:
 
-1. Generate `submission_id` (uuid4) server-side immediately when the request is received.
-2. For each uploaded image: save to `uploads/` → OpenCV → Mistral OCR → **delete both files from disk** (on success and on failure).
-3. Store only `{ img_index, filename, ocr_md }` per image — no file paths retained.
-4. Concatenate all page OCR texts with explicit `===== BEGIN PAGE N =====` / `===== END PAGE N =====` markers so Claude understands multi-page context.
-5. Send combined OCR to Claude **once** — extraction is performed at document level.
-6. Call `insert_data(llm_result)` → Supabase generates and returns a `serial_number` in the format `MCL/{year}/{number}` (e.g. `MCL/2026/1001`).
-7. Push result to Google Sheets via webhook, including the `serial_number`.
-8. Return full response including `serial_number`, `extracted_data`, `submission_id`, and per-image metadata. **No JSON file is written to disk.**
+1. Generate `submission_id` with `uuid4()` on request receipt.
+2. For each image, save temporarily, preprocess, run Mistral OCR, then delete both temp files.
+3. Keep only `{ img_index, filename, ocr_md }` in memory.
+4. Concatenate all OCR with page markers so Claude sees the document as a whole.
+5. Call Claude once.
+6. Insert the result into Supabase, which generates the serial number.
+7. Push the result to Google Sheets.
+8. Return the response without writing any result file.
 
 ### API contract
 
-```
+```text
 POST /upload/
-Content-Type: multipart/form-data
-Body: files=[file1, file2, ...]
+Body: multipart/form-data with files=[...]
 
-Response:
+Success response:
 {
-  "serial_number": "MCL/2026/1001",
-  "message": "Document processed successfully",
-  "submission_id": "<uuid>",
-  "status": "complete",
-  "file_count": 1,
-  "files": ["document.jpg"],
-  "images": [{"img_index": 1, "filename": "document.jpg", "ocr_md": "..."}],
-  "extracted_data": { ... }
+  serial_number,
+  message,
+  submission_id,
+  status: "complete",
+  file_count,
+  files,
+  images,
+  extracted_data
 }
 ```
 
-### Multi-image failure behavior (unresolved)
+### Multi-image failure behavior
 
-If one of N images fails OCR, the project still needs an explicit decision: fail the entire submission or continue with that image's `ocr_md` set to `null`. Currently the endpoint raises HTTP 500 on any image failure.
+The current endpoint still fails the whole submission if one image fails OCR. That behavior is unresolved and should be decided explicitly before expanding the multi-image flow further.
 
 ## Storage
 
-- **Supabase/PostgreSQL:** sole operational storage. Generates `serial_number` via `insert_data()` in `supabase_service.py`. Stores document fields + `status: pending`. History served via `get_recent_documents(limit=10)`.
-- **Google Sheets:** permanent archival record via webhook in `sheets_service.py`. Payload includes all LLM fields + `serial_number` + `filename` + `processed_at` (IST timestamp).
-- Permanent image storage in the database is prohibited.
-- **No local JSON output files.** The `output/` directory is obsolete. `save_result_json()` in `file_utils.py` is dead code.
+- Supabase/PostgreSQL is the only operational data store.
+- `insert_data()` in `supabase_service.py` generates `serial_number` values in the form `MCL/{year}/{number}`.
+- The backing table is `document_submission`.
+- Status values are `pending`, `complete`, and `failed`.
+- Google Sheets receives the final structured payload through webhook sync.
+- The `output/` directory is obsolete, and `save_result_json()` is dead code.
 
-### Serial number format
+## Frontend / camera
 
-```
-MCL/{year}/{sequential_number}
-```
-
-- Starts at 1001 if no existing records for the year.
-- Generated by querying Supabase for the max existing number for the current year, then incrementing by 1.
-
-## Frontend / Camera
-
-Arshdeep owns the camera functionality and frontend work on `frontend` branch. The frontend has been restructured — screens now live under `frontend/src/screens/`.
-
-App.tsx renders a global header ("MCL DAAK") and a `CircularNavigation` footer. Individual screens do not have their own headers or footers.
+The frontend is structured around a global app shell with the camera, processing, result, and history screens under `frontend/src/screens/`.
 
 Target UX:
 
 ```text
-Capture / Upload
+Capture / upload
       ↓
-Image preview
+Preview
       ↓
-Processing animation/status
+Processing status
       ↓
-OCR + Claude processing
+OCR + Claude
       ↓
-Final structured result
+Structured result
       ↓
-Human review/edit
+Review/edit
       ↓
 Save
 ```
 
-The application must ultimately work on both mobile and web.
+The application is expected to work on both mobile and web.
 
-## Processing States
+## Deployment / security
 
-Real backend status tracking is planned but not required before the core persistence flow works. The intended state progression is approximately:
+- Docker is the runtime for the backend.
+- HTTPS deployment is needed for camera access in browsers.
+- No authentication or RBAC is implemented.
+- No agents, no streaming, and no permanent image storage.
 
-```text
-CAPTURED
-→ PREPROCESSED
-→ OCR_COMPLETED
-→ LLM_COMPLETED
-→ UNDER_REVIEW
-→ DATABASE_SAVED
-→ SHEET_SYNC_PENDING
-→ COMPLETED
-```
+## Current technical debt
 
-Do not introduce a complex workflow engine for this.
+- Stale import in `config.py` line 1: `from anthropic.types import completion_create_params`
+- `save_result_json()` still exists in `file_utils.py` but is unused
+- Department and category lists are hardcoded in `claude_service.py`
+- The service stack is synchronous and blocks the event loop
+- No file type or size validation is present
+- Multi-image OCR failure still aborts the entire submission
 
-## Deployment / Security
+## Immediate roadmap
 
-- Docker is the application runtime; Python `venv` is used for local development.
-- Temporary deployment target is Render because HTTPS is needed for browser camera access (`navigator.mediaDevices`).
-- Office-network/IP restriction is a later security task.
-- No authentication or RBAC.
-- No centralized MCL platform.
-- No agents, no streaming, and no permanent image storage in DB.
-
-## Current Deployment Optimization
-
-PaddleOCR removal is part of the Render deployment preparation. The Docker image was reduced from approximately 3.27 GB to approximately 1.45 GB after clearing build cache and removing the previous cache-heavy layers.
-
-The current Python dependency list is intentionally lightweight:
-
-```text
-fastapi
-uvicorn[standard]
-opencv-python-headless
-numpy
-python-dotenv
-python-multipart
-mistralai
-supabase
-anthropic
-google-genai
-pytest
-httpx
-```
-
-`pytest` is only for testing and should eventually be kept out of the production image.
-
-The Dockerfile should not upgrade pip during every build. The application dependency installation should be the direct `pip install --no-cache-dir -r requirements.txt` step because the previous pip upgrade failed due to a PyPI network timeout.
-
-## Known Review Risks
-
-- Missing imports.
-- Defined-but-uncalled functions.
-- Hardcoded paths that ignore parameters.
-- Stale configuration variables.
-- Trailing commas creating unintended tuples.
-- Misplaced `try/except` blocks.
-- `json.dumps()` applied to an already-string result.
-- Punjabi/Gurmukhi OCR quality needs real verification.
-- Partial multi-image OCR failure behavior is not yet decided.
-- Claude prompt needs to explicitly say that its input is concatenated multi-page OCR text.
-- `config.py` line 1 has a stale `from anthropic.types import completion_create_params` import that is unused; safe to remove.
-
-## Immediate Roadmap
-
-1. Clean up dead code: remove unused `save_result_json` import and function, remove stale `config.py` line 1 import.
-2. Decide partial multi-image OCR failure behavior.
-3. Implement human review/edit step in the frontend before final Supabase save.
-4. Deploy/test the MVP on Render with the Supabase-backed history.
-5. Coordinate camera/mobile frontend work with Arshdeep.
-6. Implement real document-specific processing states.
-7. Add office-network/IP restriction or basic auth before commissioner demo.
-8. Remove `pytest` from production Docker image.
+1. Remove dead code and stale imports.
+2. Decide how partial multi-image OCR failures should behave.
+3. Add input validation for upload size and type.
+4. Add Pydantic schemas under `schemas/`.
+5. Keep the docs aligned with the current branch and remote layout.
